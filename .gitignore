@@ -1,0 +1,6 @@
+venv
+.idea
+dataset/*
+resources/
+.DS_Store
+
