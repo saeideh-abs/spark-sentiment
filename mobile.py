@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from hazm import *
 from pyspark.sql import SparkSession
 from pyspark import SparkContext
-from pyspark.ml.feature import HashingTF, IDF, Tokenizer
+from pyspark.ml.feature import HashingTF, IDF, Tokenizer, Word2Vec
 from pyspark.ml.classification import LinearSVC
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
@@ -20,18 +20,11 @@ def get_info(df):
     comments.show()
 
 
-def build_tfidf(docs):
+def tokenization(docs):
     tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
     tokens = tokenizer.transform(docs)
     # tokens = custom_tokenizer(docs)
-    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
-    featurizedData = hashingTF.transform(tokens)
-    # featurizedData.select('rawFeatures').show(1, truncate=False)
-
-    idf = IDF(inputCol="hashedTf", outputCol="hashedTfIdf")
-    idfModel = idf.fit(featurizedData)
-    rescaledData = idfModel.transform(featurizedData)
-    return rescaledData
+    return tokens
 
 
 def custom_tokenizer(docs):
@@ -41,11 +34,34 @@ def custom_tokenizer(docs):
     return tokens
 
 
-def svm_classification(train_df, test_df):
-    svm = LinearSVC(featuresCol='hashedTfIdf', labelCol='accept')
+def build_tfidf(train_df, test_df):
+    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
+    train_featurizedData = hashingTF.transform(train_df)
+    test_featurizedData = hashingTF.transform(test_df)
+
+    # featurizedData.select('rawFeatures').show(1, truncate=False)
+
+    idf = IDF(inputCol="hashedTf", outputCol="hashedTfIdf")
+    idfModel = idf.fit(train_featurizedData)
+    train_rescaledData = idfModel.transform(train_featurizedData)
+    test_rescaledData = idfModel.transform(test_featurizedData)
+    return train_rescaledData, test_rescaledData
+
+
+def build_word2vec(train_df, test_df):
+    word2vec = Word2Vec(vectorSize=100, minCount=5, inputCol='tokens', outputCol='word2vec')
+    model = word2vec.fit(train_df)
+    train_vec = model.transform(train_df)
+    test_vec = model.transform(test_df)
+    train_vec.show(5, truncate=False)
+    return train_vec, test_vec
+
+
+def svm_classification(train_df, test_df, feature_col):
+    svm = LinearSVC(featuresCol=feature_col, labelCol='accept')
     model = svm.fit(train_df)
     model.setPredictionCol("prediction")
-    result_df = model.transform(test)
+    result_df = model.transform(test_df)
     # result_df.select('prediction').show()
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
                                                   metricName="accuracy")
@@ -60,9 +76,12 @@ if __name__ == '__main__':
     data_df = spark.read.csv('./dataset/mobile_digikala.csv', inferSchema=True, header=True)
 
     # get_info(data_df)
-    featurized_df = build_tfidf(data_df)
-    featurized_df.printSchema()
-    train, test = featurized_df.randomSplit([0.9, 0.1])
+    data_df = tokenization(data_df)
+    train, test = data_df.randomSplit([0.8, 0.2])
     print("train and test count", train.count(), test.count())
-    svm_classification(train, test)
+    train_featurized, test_featurized = build_tfidf(train, test)
+    train_featurized, test_featurized = build_word2vec(train, test)
+
+    train_featurized.printSchema()
+    svm_classification(train_featurized, test_featurized, feature_col='word2vec')
     spark.stop()
