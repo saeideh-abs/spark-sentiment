@@ -3,7 +3,7 @@ from hazm import *
 from pyspark.sql import SparkSession
 from pyspark import SparkContext
 from pyspark.ml.feature import HashingTF, IDF, Tokenizer, Word2Vec
-from pyspark.ml.classification import LinearSVC
+from pyspark.ml.classification import LinearSVC, RandomForestClassifier
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
 
@@ -49,11 +49,10 @@ def build_tfidf(train_df, test_df):
 
 
 def build_word2vec(train_df, test_df):
-    word2vec = Word2Vec(vectorSize=100, minCount=5, inputCol='tokens', outputCol='word2vec')
+    word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
     model = word2vec.fit(train_df)
     train_vec = model.transform(train_df)
     test_vec = model.transform(test_df)
-    train_vec.show(5, truncate=False)
     return train_vec, test_vec
 
 
@@ -69,6 +68,21 @@ def svm_classification(train_df, test_df, feature_col):
     print("Test set accuracy = " + str(accuracy))
 
 
+def random_forest_classification(train_df, test_df, feature_col):
+    rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='prediction')
+    model = rf.fit(train_df)
+    result_df = model.transform(test_df)
+    # result_df.select('probability').show(truncate=False)
+    high_conf = result_df.rdd\
+        .filter(lambda x: x.probability[0] >= 0.8 or x.probability[1] >= 0.8).toDF()
+    # high_conf.show(truncate=False)
+    print(result_df.count(), high_conf.count())
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(high_conf)
+    print("Test set accuracy = " + str(accuracy))
+
+
 if __name__ == '__main__':
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
@@ -77,11 +91,21 @@ if __name__ == '__main__':
 
     # get_info(data_df)
     data_df = tokenization(data_df)
-    train, test = data_df.randomSplit([0.8, 0.2])
+    train, test = data_df.randomSplit([0.7, 0.3], seed=42)
     print("train and test count", train.count(), test.count())
-    train_featurized, test_featurized = build_tfidf(train, test)
-    train_featurized, test_featurized = build_word2vec(train, test)
 
-    train_featurized.printSchema()
-    svm_classification(train_featurized, test_featurized, feature_col='word2vec')
+    tfidf_train, tfidf_test = build_tfidf(train, test)
+    w2v_train, w2v_test = build_word2vec(train, test)
+    tfidf_train.printSchema()
+
+    print("___________svm classifier with tf-idf embedding___________")
+    svm_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    print("___________svm classifier with word2vec embedding______________")
+    svm_classification(w2v_train, w2v_test, feature_col='word2vec')
+
+    print("___________RF classifier with tf-idf embedding___________")
+    random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    print("___________RF classifier with word2vec embedding______________")
+    random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
+
     spark.stop()
