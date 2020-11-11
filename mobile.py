@@ -2,9 +2,11 @@ from __future__ import unicode_literals
 from hazm import *
 from pyspark.sql import SparkSession
 from pyspark import SparkContext
+from pyspark.ml import Pipeline
 from pyspark.ml.feature import HashingTF, IDF, Tokenizer, Word2Vec
 from pyspark.ml.classification import LinearSVC, RandomForestClassifier
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 
 
 def get_info(df):
@@ -76,11 +78,30 @@ def random_forest_classification(train_df, test_df, feature_col):
     high_conf = result_df.rdd\
         .filter(lambda x: x.probability[0] >= 0.8 or x.probability[1] >= 0.8).toDF()
     # high_conf.show(truncate=False)
-    print(result_df.count(), high_conf.count())
+    print(result_df.count(), "count of high confidense data", high_conf.count())
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
                                                   metricName="accuracy")
-    accuracy = evaluator.evaluate(high_conf)
+    accuracy = evaluator.evaluate(result_df)
     print("Test set accuracy = " + str(accuracy))
+
+
+def cross_validation(total_df):
+    folds = 5
+    print(folds, "fold cross validation")
+
+    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
+    idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
+    rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
+    pipeline = Pipeline(stages=[hashingTF, idf, rf])
+
+    param_grid = ParamGridBuilder().build()
+    cv = CrossValidator(estimator=pipeline, estimatorParamMaps=param_grid,
+                        evaluator=MulticlassClassificationEvaluator(labelCol="accept",
+                                                                    predictionCol="prediction",
+                                                                    metricName="accuracy"),
+                        numFolds=folds, parallelism=2)
+    cv_model = cv.fit(total_df)
+    print(cv_model.avgMetrics)
 
 
 if __name__ == '__main__':
@@ -108,4 +129,6 @@ if __name__ == '__main__':
     print("___________RF classifier with word2vec embedding______________")
     random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
+    print("____________ cross validation ____________")
+    cross_validation(data_df)
     spark.stop()
