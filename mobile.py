@@ -4,7 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark import SparkContext
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import HashingTF, IDF, Tokenizer, Word2Vec
-from pyspark.ml.classification import LinearSVC, RandomForestClassifier
+from pyspark.ml.classification import LinearSVC, RandomForestClassifier, LogisticRegression
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 
@@ -32,7 +32,7 @@ def tokenization(docs):
 def custom_tokenizer(docs):
     # docs.show(5)
     # new = docs.rdd.map(str)
-    tokens = docs.rdd.map(lambda doc: doc.text.split(' ')).toDF()
+    tokens = docs.rdd.flatMap(lambda doc: doc.text.split(' ')).toDF()
     return tokens
 
 
@@ -92,14 +92,19 @@ def cross_validation(total_df):
     hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
     idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
     rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
-    pipeline = Pipeline(stages=[hashingTF, idf, rf])
+    svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
+    lgr = LogisticRegression(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction',
+                             # maxIter=10, regParam=0.3, elasticNetParam=0.8
+                             )
+
+    pipeline = Pipeline(stages=[hashingTF, idf, lgr])
 
     param_grid = ParamGridBuilder().build()
     cv = CrossValidator(estimator=pipeline, estimatorParamMaps=param_grid,
                         evaluator=MulticlassClassificationEvaluator(labelCol="accept",
                                                                     predictionCol="prediction",
                                                                     metricName="accuracy"),
-                        numFolds=folds, parallelism=2)
+                        numFolds=folds, parallelism=2, seed=50)
     cv_model = cv.fit(total_df)
     print(cv_model.avgMetrics)
 
@@ -132,3 +137,9 @@ if __name__ == '__main__':
     print("____________ cross validation ____________")
     cross_validation(data_df)
     spark.stop()
+
+""" remained works: 
+    1- hyper parameters tuning (random forest model, lgr, ...)
+    2- implement using logistic regression
+    3- hazm word_tokenization
+"""
