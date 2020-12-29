@@ -72,6 +72,7 @@ def build_word2vec(train_df, test_df):
     model = word2vec.fit(train_df)
     train_vec = model.transform(train_df)
     test_vec = model.transform(test_df)
+    train_vec.show(10)
     return train_vec, test_vec
 
 
@@ -106,7 +107,7 @@ def naive_bayes_classification(train_df, test_df, feature_col):
     nb = NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol="accept", featuresCol=feature_col)
     model = nb.fit(train_df)
     result_df = model.transform(test_df)
-    result_df.select('prediction').show()
+    # result_df.select('prediction').show()
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
@@ -169,7 +170,7 @@ if __name__ == '__main__':
     print("___________NB classifier with tf-idf embedding___________")
     naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________NB classifier with word2vec embedding______________")
-    naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
+    # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________")
     cross_validation(data_df)
