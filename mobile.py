@@ -5,7 +5,7 @@ from pyspark import SparkContext
 from pyspark.sql.types import IntegerType
 from pyspark.sql.functions import regexp_replace
 from pyspark.ml import Pipeline
-from pyspark.ml.feature import HashingTF, IDF, Tokenizer, Word2Vec
+from pyspark.ml.feature import StringIndexer, HashingTF, IDF, Tokenizer, Word2Vec
 from pyspark.ml.classification import LinearSVC, RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
@@ -26,6 +26,23 @@ def miras_cleaning(df):
     negative_num = df.filter(df.accept == 2).count()
     print("number of positives:", positive_num, "number of negatives:", negative_num,
           "number of neutrals:", neutral_num)
+    return df
+
+
+def digikala_crawled_cleaning(df):
+    print("total number of data:", df.count())
+    df = df.withColumnRenamed('comment_body', 'text')
+    # get some info
+    df = df.filter((df.recommendation == 'opinion-positive') | (df.recommendation == 'opinion-negative') |
+                   (df.recommendation == 'opinion-noidea'))
+    print("count", df.count())
+    print("positives count:", df.filter(df.recommendation == 'opinion-positive').count())
+    print("negatives count:", df.filter(df.recommendation == 'opinion-negative').count())
+    print("neutrals count:", df.filter(df.recommendation == 'opinion-noidea').count())
+
+    stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
+    model = stringIndexer.fit(df)
+    df = model.transform(df)
     return df
 
 
@@ -145,8 +162,12 @@ if __name__ == '__main__':
     # sc.addPyFile(hazm)
     spark = SparkSession.builder.master("local[1]").appName("Mobile").getOrCreate()
     # data_df = spark.read.csv('./dataset/mobile_digikala.csv', inferSchema=True, header=True)
-    data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
-    data_df = miras_cleaning(data_df)
+
+    # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
+    # data_df = miras_cleaning(data_df)
+
+    data_df = spark.read.csv('./dataset/tablet.csv', inferSchema=True, header=True)
+    data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
     data_df = tokenization(data_df)
