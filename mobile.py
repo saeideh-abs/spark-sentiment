@@ -35,11 +35,13 @@ def digikala_crawled_cleaning(df):
     # get some info
     df = df.filter((df.recommendation == 'opinion-positive') | (df.recommendation == 'opinion-negative') |
                    (df.recommendation == 'opinion-noidea'))
-    print("count", df.count())
+    print("count of labeled comments", df.count())
     print("positives count:", df.filter(df.recommendation == 'opinion-positive').count())
     print("negatives count:", df.filter(df.recommendation == 'opinion-negative').count())
     print("neutrals count:", df.filter(df.recommendation == 'opinion-noidea').count())
 
+    df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
+    print(df.count())
     stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     model = stringIndexer.fit(df)
     df = model.transform(df)
@@ -57,6 +59,7 @@ def get_info(df):
 
 
 def tokenization(docs):
+    print("tokenizer")
     tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
     tokens = tokenizer.transform(docs)
     # tokens = custom_tokenizer(docs)
