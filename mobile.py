@@ -43,7 +43,7 @@ def digikala_crawled_cleaning(df):
     print("neutrals count:", df.filter(df.recommendation == 'opinion-noidea').count())
 
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
-    print("count of non-empty comment_bodies:", df.count())
+    print("count of labled and non-empty comment_bodies:", df.count())
     # print("advantages", df.select('advantages').show(truncate=False))
     stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     model = stringIndexer.fit(df)
@@ -71,7 +71,7 @@ def text_cleaner(doc):
     words = word_tokenize(normal_text)
     # stem = [stemmer.stem(word) for word in words]
     lemm = [lemmatizer.lemmatize(word).split('#')[0] for word in words]  # get the past part of the lemm
-    print(lemm)
+    # print(lemm)
     return lemm
 
 
@@ -92,7 +92,7 @@ def custom_tokenizer(docs):
     # tokens = docs.rdd.flatMap(lambda doc: [word_tokenize(str(doc.text))])
     # tokens = docs.withColumn("text", split("text", "\s+")).withColumnRenamed('text', 'tokens')
     tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
-    tokens.select('tokens').show(truncate=False)
+    # tokens.select('tokens').show(truncate=False)
     return tokens
 
 
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/tablet.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('./dataset/storage.csv', inferSchema=True, header=True)
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
