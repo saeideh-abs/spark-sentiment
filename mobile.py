@@ -61,27 +61,13 @@ def get_info(df):
     # print(labels.collect())
 
 
-@udf(returnType=ArrayType(StringType()))
-def text_cleaner(doc):
-    normalizer = Normalizer(persian_numbers=False)
-    stemmer = Stemmer()
-    lemmatizer = Lemmatizer()
-
-    normal_text = normalizer.normalize(doc)
-    words = word_tokenize(normal_text)
-    # stem = [stemmer.stem(word) for word in words]
-    lemm = [lemmatizer.lemmatize(word).split('#')[0] for word in words]  # get the past part of the lemm
-    # print(lemm)
-    return lemm
-
-
 def tokenization(docs):
     print("tokenizer")
     # tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
     # tokens = tokenizer.transform(docs)
     # or
-    tokens = docs.withColumn('tokens', text_cleaner('text'))
-    # tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
+    tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
+    tokens.printSchema()
     return tokens
 
 
@@ -99,6 +85,20 @@ def custom_tokenizer(docs):
 @udf(returnType=ArrayType(StringType()))
 def hazm_tokenizer(text):
     return word_tokenize(text)
+
+
+@udf(returnType=ArrayType(StringType()))
+def text_cleaner(doc):
+    normalizer = Normalizer(persian_numbers=False)
+    stemmer = Stemmer()
+    lemmatizer = Lemmatizer()
+
+    normal_text = normalizer.normalize(doc)
+    words = word_tokenize(normal_text)
+    # stem = [stemmer.stem(word) for word in words]
+    lemm = [lemmatizer.lemmatize(word).split('#')[0] for word in words]  # get the past part of the lemm
+    # print(lemm)
+    return lemm
 
 
 def build_tfidf(train_df, test_df):
