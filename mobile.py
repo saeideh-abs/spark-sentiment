@@ -63,10 +63,11 @@ def get_info(df):
 
 def tokenization(docs):
     print("tokenizer")
+    # using spark tool
     # tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
     # tokens = tokenizer.transform(docs)
     # or
-    tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
+    tokens = docs.withColumn('tokens', hazm_tokenizer('clean_text'))
     tokens.printSchema()
     return tokens
 
@@ -77,7 +78,7 @@ def custom_tokenizer(docs):
     # tokens = docs.rdd.flatMap(lambda doc: [doc.text.split(' ')])  # need to convert this to DF
     # tokens = docs.rdd.flatMap(lambda doc: [word_tokenize(str(doc.text))])
     # tokens = docs.withColumn("text", split("text", "\s+")).withColumnRenamed('text', 'tokens')
-    tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
+    tokens = docs.withColumn('tokens', hazm_tokenizer('clean_text'))
     # tokens.select('tokens').show(truncate=False)
     return tokens
 
@@ -87,18 +88,23 @@ def hazm_tokenizer(text):
     return word_tokenize(text)
 
 
-@udf(returnType=ArrayType(StringType()))
-def text_cleaner(doc):
+def text_cleaner(df):
     normalizer = Normalizer(persian_numbers=False)
     stemmer = Stemmer()
     lemmatizer = Lemmatizer()
 
-    normal_text = normalizer.normalize(doc)
-    words = word_tokenize(normal_text)
-    # stem = [stemmer.stem(word) for word in words]
-    lemm = [lemmatizer.lemmatize(word).split('#')[0] for word in words]  # get the past part of the lemm
-    # print(lemm)
-    return lemm
+    normalizer_udf = udf(normalizer.normalize, StringType())
+    stemmer_udf = udf(lambda words: [stemmer.stem(word) for word in words], ArrayType(StringType()))
+    lemmatizer_udf = udf(lambda words: [lemmatizer.lemmatize(word).split('#')[0] for word in words], ArrayType(StringType()))
+    conjoin_words = udf(lambda words_list: ' '.join(words_list), StringType())
+
+    df = df.withColumn('normal_text', normalizer_udf('text'))
+    df = df.withColumn('words', hazm_tokenizer('normal_text'))
+    # df = df.withColumn('stem', stemmer_udf('words'))
+    df = df.withColumn('lemm', lemmatizer_udf('words'))
+    df = df.withColumn('clean_text', conjoin_words('lemm'))
+    df.select('clean_text').show(truncate=False)
+    return df
 
 
 def build_tfidf(train_df, test_df):
@@ -120,7 +126,6 @@ def build_word2vec(train_df, test_df):
     model = word2vec.fit(train_df)
     train_vec = model.transform(train_df)
     test_vec = model.transform(test_df)
-    train_vec.show(10)
     return train_vec, test_vec
 
 
@@ -192,17 +197,25 @@ if __name__ == '__main__':
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
     spark = SparkSession.builder.master("local[1]").appName("Mobile").getOrCreate()
+
+    # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/mobile_digikala.csv', inferSchema=True, header=True)
 
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/storage.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('./dataset/camera.csv', inferSchema=True, header=True)
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
 
+    # ____________________ preprocessing and embedding _____________________
+    data_df = data_df.select('text', 'accept')
+    print("text cleaner func")
+    data_df = text_cleaner(data_df)
+
     data_df = tokenization(data_df)
+    data_df.select('tokens').show(truncate=False)
     train, test = data_df.randomSplit([0.7, 0.3], seed=42)
     print("train and test count", train.count(), test.count())
 
@@ -210,6 +223,7 @@ if __name__ == '__main__':
     w2v_train, w2v_test = build_word2vec(train, test)
     tfidf_train.printSchema()
 
+    # _____________________ classification part _______________________
     print("___________svm classifier with tf-idf embedding___________")
     # svm_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________svm classifier with word2vec embedding______________")
@@ -232,5 +246,5 @@ if __name__ == '__main__':
 """ remained works: 
     1- hyper parameters tuning (random forest model, lgr, ...)
     2- lexicon based and hybrid clf
-    3- hazm word_tokenization
+    3- preprocessing
 """
