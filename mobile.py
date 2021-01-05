@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 from hazm import *
+from pyspark.sql.functions import split
+from pyspark.sql.functions import udf
 from pyspark.sql import SparkSession
 from pyspark import SparkContext
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import IntegerType, ArrayType, StringType
 from pyspark.sql.functions import regexp_replace
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import StringIndexer, HashingTF, IDF, Tokenizer, Word2Vec
@@ -41,7 +43,8 @@ def digikala_crawled_cleaning(df):
     print("neutrals count:", df.filter(df.recommendation == 'opinion-noidea').count())
 
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
-    print(df.count())
+    print("count of non-empty comment_bodies:", df.count())
+    # print("advantages", df.select('advantages').show(truncate=False))
     stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     model = stringIndexer.fit(df)
     df = model.transform(df)
@@ -58,19 +61,44 @@ def get_info(df):
     # print(labels.collect())
 
 
+@udf(returnType=ArrayType(StringType()))
+def text_cleaner(doc):
+    normalizer = Normalizer(persian_numbers=False)
+    stemmer = Stemmer()
+    lemmatizer = Lemmatizer()
+
+    normal_text = normalizer.normalize(doc)
+    words = word_tokenize(normal_text)
+    # stem = [stemmer.stem(word) for word in words]
+    lemm = [lemmatizer.lemmatize(word).split('#')[0] for word in words]  # get the past part of the lemm
+    print(lemm)
+    return lemm
+
+
 def tokenization(docs):
     print("tokenizer")
-    tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
-    tokens = tokenizer.transform(docs)
-    # tokens = custom_tokenizer(docs)
+    # tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
+    # tokens = tokenizer.transform(docs)
+    # or
+    tokens = docs.withColumn('tokens', text_cleaner('text'))
+    # tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
     return tokens
 
 
 def custom_tokenizer(docs):
     # docs.show(5)
     # new = docs.rdd.map(str)
-    tokens = docs.rdd.flatMap(lambda doc: doc.text.split(' ')).toDF()
+    # tokens = docs.rdd.flatMap(lambda doc: [doc.text.split(' ')])  # need to convert this to DF
+    # tokens = docs.rdd.flatMap(lambda doc: [word_tokenize(str(doc.text))])
+    # tokens = docs.withColumn("text", split("text", "\s+")).withColumnRenamed('text', 'tokens')
+    tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
+    tokens.select('tokens').show(truncate=False)
     return tokens
+
+
+@udf(returnType=ArrayType(StringType()))
+def hazm_tokenizer(text):
+    return word_tokenize(text)
 
 
 def build_tfidf(train_df, test_df):
@@ -173,6 +201,7 @@ if __name__ == '__main__':
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
+
     data_df = tokenization(data_df)
     train, test = data_df.randomSplit([0.7, 0.3], seed=42)
     print("train and test count", train.count(), test.count())
