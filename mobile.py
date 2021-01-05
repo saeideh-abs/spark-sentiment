@@ -71,7 +71,7 @@ def text_cleaner(doc):
     words = word_tokenize(normal_text)
     # stem = [stemmer.stem(word) for word in words]
     lemm = [lemmatizer.lemmatize(word).split('#')[0] for word in words]  # get the past part of the lemm
-    print(lemm)
+    # print(lemm)
     return lemm
 
 
@@ -92,7 +92,7 @@ def custom_tokenizer(docs):
     # tokens = docs.rdd.flatMap(lambda doc: [word_tokenize(str(doc.text))])
     # tokens = docs.withColumn("text", split("text", "\s+")).withColumnRenamed('text', 'tokens')
     tokens = docs.withColumn('tokens', hazm_tokenizer('text'))
-    tokens.select('tokens').show(truncate=False)
+    # tokens.select('tokens').show(truncate=False)
     return tokens
 
 
