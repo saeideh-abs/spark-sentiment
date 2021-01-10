@@ -92,16 +92,19 @@ def text_cleaner(df):
     normalizer = Normalizer(persian_numbers=False)
     stemmer = Stemmer()
     lemmatizer = Lemmatizer()
+    stopwords = open('./resources/stopwords.txt', encoding="utf8").read().split('\n')
 
     normalizer_udf = udf(normalizer.normalize, StringType())
+    stopwords_remover = udf(lambda words: [word for word in words if word not in stopwords], ArrayType(StringType()))
     stemmer_udf = udf(lambda words: [stemmer.stem(word) for word in words], ArrayType(StringType()))
     lemmatizer_udf = udf(lambda words: [lemmatizer.lemmatize(word).split('#')[0] for word in words], ArrayType(StringType()))
     conjoin_words = udf(lambda words_list: ' '.join(words_list), StringType())
 
     df = df.withColumn('normal_text', normalizer_udf('text'))
     df = df.withColumn('words', hazm_tokenizer('normal_text'))
+    df = df.withColumn('without_stopwords', stopwords_remover('words'))
     # df = df.withColumn('stem', stemmer_udf('words'))
-    df = df.withColumn('lemm', lemmatizer_udf('words'))
+    df = df.withColumn('lemm', lemmatizer_udf('without_stopwords'))
     df = df.withColumn('clean_text', conjoin_words('lemm'))
     df.select('clean_text').show(truncate=False)
     return df
@@ -204,7 +207,7 @@ if __name__ == '__main__':
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/camera.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('./dataset/carAccessories.csv', inferSchema=True, header=True)
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
