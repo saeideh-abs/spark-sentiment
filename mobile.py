@@ -104,9 +104,9 @@ def text_cleaner(df):
     df = df.withColumn('words', hazm_tokenizer('normal_text'))
     df = df.withColumn('without_stopwords', stopwords_remover('words'))
     # df = df.withColumn('stem', stemmer_udf('words'))
-    df = df.withColumn('lemm', lemmatizer_udf('without_stopwords'))
-    df = df.withColumn('clean_text', conjoin_words('lemm'))
-    df.select('clean_text').show(truncate=False)
+    # df = df.withColumn('lemm', lemmatizer_udf('without_stopwords'))  # because of negative verbs
+    df = df.withColumn('clean_text', conjoin_words('without_stopwords'))
+    df.select('clean_text', 'normal_text').show(truncate=False)
     return df
 
 
