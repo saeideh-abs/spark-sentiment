@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+import glob
+from functools import reduce
+from pyspark.sql import DataFrame
 from hazm import *
 from pyspark.sql.functions import split
 from pyspark.sql.functions import udf
@@ -11,6 +14,20 @@ from pyspark.ml.feature import StringIndexer, HashingTF, IDF, Tokenizer, Word2Ve
 from pyspark.ml.classification import LinearSVC, RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+
+
+# a function for concatenate all crawled csv files and make a single csv file
+def read_spark_df():
+    all_files = glob.glob('./dataset/csv/*.csv')
+    frames = []
+    for filename in all_files:
+        print(filename)
+        df = spark.read.csv(filename, header=True, inferSchema=True)
+        frames.append(df)
+
+    df_complete = reduce(DataFrame.unionAll, frames)  # to merge(concatenate) multiple dfs
+    df_complete.repartition(1).write.csv("digikalaCrawledData.csv", header=True)
+    return df_complete
 
 
 def miras_cleaning(df):
@@ -88,6 +105,7 @@ def hazm_tokenizer(text):
     return word_tokenize(text)
 
 
+# preprocessing on persian text
 def text_cleaner(df):
     normalizer = Normalizer(persian_numbers=False)
     stemmer = Stemmer()
@@ -207,7 +225,7 @@ if __name__ == '__main__':
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/carAccessories.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('./dataset/stationery.csv', inferSchema=True, header=True)
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
@@ -246,7 +264,7 @@ if __name__ == '__main__':
     cross_validation(data_df)
     spark.stop()
 
-""" remained works: 
+""" remained works:
     1- hyper parameters tuning (random forest model, lgr, ...)
     2- lexicon based and hybrid clf
     3- preprocessing
