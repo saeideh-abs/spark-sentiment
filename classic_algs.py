@@ -220,12 +220,12 @@ if __name__ == '__main__':
     spark = SparkSession.builder.master("local[1]").appName("Mobile").getOrCreate()
 
     # _______________________ loading datasets _________________________
-    # data_df = spark.read.csv('./dataset/mobile_digikala.csv', inferSchema=True, header=True)
+    # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
 
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/stationery.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('./dataset/categories/stationery.csv', inferSchema=True, header=True)
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
