@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+import time
 import glob
 from functools import reduce
 from pyspark.sql import DataFrame
@@ -16,9 +17,15 @@ from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 
 
+def display_current_time():
+    t = time.localtime()
+    current_time = time.strftime("%H:%M:%S", t)
+    return current_time
+
+
 # a function for concatenate all crawled csv files and make a single csv file
 def read_spark_df():
-    all_files = glob.glob('./dataset/csv/*.csv')
+    all_files = glob.glob('./dataset/categories/*.csv')
     frames = []
     for filename in all_files:
         print(filename)
@@ -79,7 +86,6 @@ def get_info(df):
 
 
 def tokenization(docs):
-    print("tokenizer")
     # using spark tool
     # tokenizer = Tokenizer(inputCol="text", outputCol="tokens")
     # tokens = tokenizer.transform(docs)
@@ -225,47 +231,51 @@ if __name__ == '__main__':
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/categories/stationery.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
 
     # ____________________ preprocessing and embedding _____________________
     data_df = data_df.select('text', 'accept')
-    print("text cleaner func")
+    print("text cleaner func", display_current_time())
     data_df = text_cleaner(data_df)
 
+    print("tokenizer", display_current_time())
     data_df = tokenization(data_df)
     data_df.select('tokens').show(truncate=False)
     train, test = data_df.randomSplit([0.7, 0.3], seed=42)
-    print("train and test count", train.count(), test.count())
+    print("train and test count", train.count(), test.count(), display_current_time())
 
+    print("tf-idf embedding", display_current_time())
     tfidf_train, tfidf_test = build_tfidf(train, test)
+    print("word2vec embedding", display_current_time())
     w2v_train, w2v_test = build_word2vec(train, test)
     tfidf_train.printSchema()
 
     # _____________________ classification part _______________________
-    print("___________svm classifier with tf-idf embedding___________")
+    print("___________svm classifier with tf-idf embedding___________", display_current_time())
     # svm_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
-    print("___________svm classifier with word2vec embedding______________")
+    print("___________svm classifier with word2vec embedding______________", display_current_time())
     # svm_classification(w2v_train, w2v_test, feature_col='word2vec')
 
-    print("___________RF classifier with tf-idf embedding___________")
-    random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
-    print("___________RF classifier with word2vec embedding______________")
+    print("___________RF classifier with tf-idf embedding___________", display_current_time())
+    # random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    print("___________RF classifier with word2vec embedding______________", display_current_time())
     random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
-    print("___________NB classifier with tf-idf embedding___________")
+    print("___________NB classifier with tf-idf embedding___________", display_current_time())
     naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
-    print("___________NB classifier with word2vec embedding______________")
+    print("___________NB classifier with word2vec embedding______________", display_current_time())
     # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
 
-    print("____________ cross validation ____________")
+    print("____________ cross validation ____________", display_current_time())
     cross_validation(data_df)
+    print("cross validation end", display_current_time())
     spark.stop()
 
 """ remained works:
     1- hyper parameters tuning (random forest model, lgr, ...)
     2- lexicon based and hybrid clf
-    3- preprocessing
+    3- preprocessing (punctuation removing)
 """
