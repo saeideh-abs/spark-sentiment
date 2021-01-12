@@ -223,7 +223,7 @@ def cross_validation(total_df):
 if __name__ == '__main__':
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("local[1]").appName("Mobile").getOrCreate()
+    spark = SparkSession.builder.master("local[1]").appName("Mobile").config("spark.driver.memory", "15g").getOrCreate()
 
     # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
@@ -248,10 +248,10 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     print("tf-idf embedding", display_current_time())
-    tfidf_train, tfidf_test = build_tfidf(train, test)
+    # tfidf_train, tfidf_test = build_tfidf(train, test)
     print("word2vec embedding", display_current_time())
     w2v_train, w2v_test = build_word2vec(train, test)
-    tfidf_train.printSchema()
+    # tfidf_train.printSchema()
 
     # _____________________ classification part _______________________
     print("___________svm classifier with tf-idf embedding___________", display_current_time())
@@ -265,7 +265,7 @@ if __name__ == '__main__':
     random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________NB classifier with tf-idf embedding___________", display_current_time())
-    naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    # naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________NB classifier with word2vec embedding______________", display_current_time())
     # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
 
