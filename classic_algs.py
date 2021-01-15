@@ -194,28 +194,42 @@ def naive_bayes_classification(train_df, test_df, feature_col):
     print("Test set accuracy = " + str(accuracy))
 
 
+def logistic_regression_classification(train_df, test_df, feature_col):
+    lgr = LogisticRegression(labelCol='accept', featuresCol=feature_col, predictionCol='prediction',
+                             # maxIter=10, regParam=0.3, elasticNetParam=0.8
+                             )
+    model = lgr.fit(train_df)
+    result_df = model.transform(test_df)
+    # result_df.select('prediction').show()
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(result_df)
+    print("Test set accuracy = " + str(accuracy))
+
+
 def cross_validation(total_df):
     folds = 5
     print(folds, "fold cross validation")
 
     hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
     idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
-    word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
+    # word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
 
-    rf = RandomForestClassifier(labelCol="accept", featuresCol=word2vec.getOutputCol(), predictionCol='prediction')
-    svm = LinearSVC(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction')
-    lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
+    rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
+    svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
+    lgr = LogisticRegression(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
 
-    # pipeline = Pipeline(stages=[hashingTF, idf, lgr])
-    pipeline = Pipeline(stages=[word2vec, lgr])
+    pipeline = Pipeline(stages=[hashingTF, idf, lgr])
+    # pipeline = Pipeline(stages=[word2vec, lgr])
     param_grid = ParamGridBuilder().build()
     cv = CrossValidator(estimator=pipeline, estimatorParamMaps=param_grid,
                         evaluator=MulticlassClassificationEvaluator(labelCol="accept",
                                                                     predictionCol="prediction",
                                                                     metricName="accuracy"),
                         numFolds=folds, parallelism=4, seed=50)
+    total_df.cache()
     cv_model = cv.fit(total_df)
     print(cv_model.avgMetrics)
 
@@ -223,7 +237,7 @@ def cross_validation(total_df):
 if __name__ == '__main__':
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("local[1]").appName("Mobile").config("spark.driver.memory", "15g").getOrCreate()
+    spark = SparkSession.builder.master("local[1]").appName("Mobile").config("spark.driver.memory", "6g").getOrCreate()
 
     # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
@@ -248,9 +262,9 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     print("tf-idf embedding", display_current_time())
-    # tfidf_train, tfidf_test = build_tfidf(train, test)
+    tfidf_train, tfidf_test = build_tfidf(train, test)
     print("word2vec embedding", display_current_time())
-    w2v_train, w2v_test = build_word2vec(train, test)
+    # w2v_train, w2v_test = build_word2vec(train, test)
     # tfidf_train.printSchema()
 
     # _____________________ classification part _______________________
@@ -262,12 +276,17 @@ if __name__ == '__main__':
     print("___________RF classifier with tf-idf embedding___________", display_current_time())
     # random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________RF classifier with word2vec embedding______________", display_current_time())
-    random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
+    # random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________NB classifier with tf-idf embedding___________", display_current_time())
     # naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________NB classifier with word2vec embedding______________", display_current_time())
     # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
+
+    print("___________lgr classifier with tf-idf embedding___________", display_current_time())
+    logistic_regression_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    print("___________lgr classifier with word2vec embedding______________", display_current_time())
+    # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________", display_current_time())
     cross_validation(data_df)
