@@ -129,7 +129,7 @@ def text_cleaner(df):
     # df = df.withColumn('stem', stemmer_udf('words'))
     # df = df.withColumn('lemm', lemmatizer_udf('without_stopwords'))  # because of negative verbs
     df = df.withColumn('clean_text', conjoin_words('without_stopwords'))
-    df.select('clean_text', 'normal_text').show(truncate=False)
+    # df.select('clean_text', 'normal_text').show(truncate=False)
     return df
 
 
@@ -213,30 +213,34 @@ def cross_validation(total_df):
 
     hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
     idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
-    # word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
-
+    print("hashing tf was finished")
+    word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
+    print("word2vec")
     rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
     svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
-    lgr = LogisticRegression(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction',
+    lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
-    pipeline = Pipeline(stages=[hashingTF, idf, lgr])
-    # pipeline = Pipeline(stages=[word2vec, lgr])
+    # pipeline = Pipeline(stages=[hashingTF, idf, lgr])
+    pipeline = Pipeline(stages=[word2vec, lgr])
     param_grid = ParamGridBuilder().build()
+    print("param grid")
     cv = CrossValidator(estimator=pipeline, estimatorParamMaps=param_grid,
                         evaluator=MulticlassClassificationEvaluator(labelCol="accept",
                                                                     predictionCol="prediction",
                                                                     metricName="accuracy"),
                         numFolds=folds, parallelism=4, seed=50)
     total_df.cache()
+    print("cv model fit")
     cv_model = cv.fit(total_df)
     print(cv_model.avgMetrics)
 
 
 if __name__ == '__main__':
+    print("start time:", display_current_time())
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("local[*]").appName("Mobile").config("spark.driver.memory", "6g").getOrCreate()
+    spark = SparkSession.builder.master("local[*]").appName("Mobile").getOrCreate()
 
     # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
@@ -245,7 +249,7 @@ if __name__ == '__main__':
     # data_df = miras_cleaning(data_df)
 
     data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
-    data_df = data_df.limit(2300000)
+    # data_df = data_df.limit(2300000)
 
     data_df = digikala_crawled_cleaning(data_df)
 
@@ -258,7 +262,7 @@ if __name__ == '__main__':
 
     print("tokenizer", display_current_time())
     data_df = tokenization(data_df)
-    data_df.select('tokens').show(truncate=False)
+    # data_df.select('tokens').show(truncate=False)
     # train, test = data_df.randomSplit([0.7, 0.3], seed=42)
     # print("train and test count", train.count(), test.count(), display_current_time())
 
@@ -291,7 +295,7 @@ if __name__ == '__main__':
 
     print("____________ cross validation ____________", display_current_time())
     cross_validation(data_df)
-    print("cross validation end", display_current_time())
+    print("end time:", display_current_time())
     spark.stop()
 
 """ remained works:
