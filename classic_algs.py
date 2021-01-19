@@ -81,8 +81,7 @@ def get_info(df):
     labels = df.select('accept')
     comments = df.select('text')
     print("count of comments", comments.count(), "count of labels:", labels.count())
-    # print(df.schema.names)
-    # print(labels.collect())
+    print("number of partiotions", df.rdd.getNumPartitions())
 
 
 def tokenization(docs):
@@ -208,6 +207,7 @@ def logistic_regression_classification(train_df, test_df, feature_col):
 
 
 def cross_validation(total_df):
+    print("number of partiotions", total_df.rdd.getNumPartitions())
     folds = 5
     print(folds, "fold cross validation")
 
@@ -220,7 +220,6 @@ def cross_validation(total_df):
     lgr = LogisticRegression(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
-
     pipeline = Pipeline(stages=[hashingTF, idf, lgr])
     # pipeline = Pipeline(stages=[word2vec, lgr])
     param_grid = ParamGridBuilder().build()
@@ -237,7 +236,7 @@ def cross_validation(total_df):
 if __name__ == '__main__':
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("local[1]").appName("Mobile").config("spark.driver.memory", "6g").getOrCreate()
+    spark = SparkSession.builder.master("local[*]").appName("Mobile").config("spark.driver.memory", "6g").getOrCreate()
 
     # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
@@ -246,6 +245,8 @@ if __name__ == '__main__':
     # data_df = miras_cleaning(data_df)
 
     data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
+    data_df = data_df.limit(2300000)
+
     data_df = digikala_crawled_cleaning(data_df)
 
     get_info(data_df)
@@ -258,11 +259,11 @@ if __name__ == '__main__':
     print("tokenizer", display_current_time())
     data_df = tokenization(data_df)
     data_df.select('tokens').show(truncate=False)
-    train, test = data_df.randomSplit([0.7, 0.3], seed=42)
-    print("train and test count", train.count(), test.count(), display_current_time())
+    # train, test = data_df.randomSplit([0.7, 0.3], seed=42)
+    # print("train and test count", train.count(), test.count(), display_current_time())
 
     print("tf-idf embedding", display_current_time())
-    tfidf_train, tfidf_test = build_tfidf(train, test)
+    # tfidf_train, tfidf_test = build_tfidf(train, test)
     print("word2vec embedding", display_current_time())
     # w2v_train, w2v_test = build_word2vec(train, test)
     # tfidf_train.printSchema()
@@ -284,7 +285,7 @@ if __name__ == '__main__':
     # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________lgr classifier with tf-idf embedding___________", display_current_time())
-    logistic_regression_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    # logistic_regression_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________lgr classifier with word2vec embedding______________", display_current_time())
     # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
