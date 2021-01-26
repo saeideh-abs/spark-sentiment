@@ -218,11 +218,11 @@ def cross_validation(total_df):
     print("word2vec")
     rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
     svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
-    lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
+    lgr = LogisticRegression(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
-    # pipeline = Pipeline(stages=[hashingTF, idf, lgr])
-    pipeline = Pipeline(stages=[word2vec, lgr])
+    pipeline = Pipeline(stages=[hashingTF, idf, lgr])
+    # pipeline = Pipeline(stages=[word2vec, lgr])
     param_grid = ParamGridBuilder().build()
     print("param grid")
     cv = CrossValidator(estimator=pipeline, estimatorParamMaps=param_grid,
