@@ -240,16 +240,19 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("local[*]").appName("Mobile").getOrCreate()
-
+    spark = SparkSession.builder.master("spark://172.23.178.8:7077").appName("Mobile").getOrCreate()
+    # print("spark", spark.master)
+    print("****************************************")
     # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
 
     # data_df = spark.read.csv('./dataset/miras_opinion.csv', inferSchema=True, header=True)
     # data_df = miras_cleaning(data_df)
 
-    data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
-    # data_df = data_df.limit(2300000)
+    # data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://sa-master:9000/user/input/digikala_all.csv', inferSchema=True, header=True)
+    print("data was loaded from hdfs", display_current_time())
+    data_df = data_df.limit(2300000)
 
     data_df = digikala_crawled_cleaning(data_df)
 
@@ -294,7 +297,7 @@ if __name__ == '__main__':
     # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________", display_current_time())
-    cross_validation(data_df)
+    # cross_validation(data_df)
     print("end time:", display_current_time())
     spark.stop()
 
@@ -302,4 +305,8 @@ if __name__ == '__main__':
     1- hyper parameters tuning (random forest model, lgr, ...)
     2- lexicon based and hybrid clf
     3- preprocessing (punctuation removing)
+    
+    ./start-slave.sh spark://172.23.178.8:7077
+    spark-submit --master spark://172.23.178.8:7077  file.py
+    start-dfs.sh
 """
