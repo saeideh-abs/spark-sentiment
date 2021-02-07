@@ -309,6 +309,7 @@ if __name__ == '__main__':
     1- hyper parameters tuning (random forest model, lgr, ...)
     2- lexicon based and hybrid clf
     3- preprocessing (punctuation removing)
+    4- bert and parsbert
     
     ./start-slave.sh spark://172.23.178.8:7077
     spark-submit --master spark://172.23.178.8:7077  file.py
