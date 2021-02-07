@@ -216,14 +216,14 @@ def cross_validation(total_df):
     # idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
     print("hashing tf was finished")
     word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
-    print("word2vec")
+    # print("word2vec")
     # rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
     # svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
     lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
+    # pipeline = Pipeline(stages=[hashingTF, idf, lgr])
     pipeline = Pipeline(stages=[word2vec, lgr])
-    # pipeline = Pipeline(stages=[word2vec, lgr])
     param_grid = ParamGridBuilder().build()
     print("param grid")
     cv = CrossValidator(estimator=pipeline, estimatorParamMaps=param_grid,
@@ -242,6 +242,7 @@ if __name__ == '__main__':
 
     conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment")
     spark_context = SparkContext(conf=conf)
+
     spark = SparkSession(spark_context).builder.master("spark://master:7077")\
         .appName("digikala comments sentiment")\
         .getOrCreate()
@@ -270,14 +271,14 @@ if __name__ == '__main__':
     print("tokenizer", display_current_time())
     data_df = tokenization(data_df)
     # data_df.select('tokens').show(truncate=False)
-    train, test = data_df.randomSplit([0.7, 0.3], seed=42)
-    print("train and test count", train.count(), test.count(), display_current_time())
+    # train, test = data_df.randomSplit([0.7, 0.3], seed=42)
+    # print("train and test count", train.count(), test.count(), display_current_time())
 
-    print("tf-idf embedding", display_current_time())
-    tfidf_train, tfidf_test = build_tfidf(train, test)
-    print("word2vec embedding", display_current_time())
-    w2v_train, w2v_test = build_word2vec(train, test)
-    tfidf_train.printSchema()
+    # print("tf-idf embedding", display_current_time())
+    # tfidf_train, tfidf_test = build_tfidf(train, test)
+    # print("word2vec embedding", display_current_time())
+    # w2v_train, w2v_test = build_word2vec(train, test)
+    # tfidf_train.printSchema()
 
     # _____________________ classification part _______________________
     print("___________svm classifier with tf-idf embedding___________", display_current_time())
@@ -286,9 +287,9 @@ if __name__ == '__main__':
     # svm_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________RF classifier with tf-idf embedding___________", display_current_time())
-    random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    # random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________RF classifier with word2vec embedding______________", display_current_time())
-    random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
+    # random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________NB classifier with tf-idf embedding___________", display_current_time())
     # naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
@@ -296,12 +297,12 @@ if __name__ == '__main__':
     # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________lgr classifier with tf-idf embedding___________", display_current_time())
-    logistic_regression_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    # logistic_regression_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________lgr classifier with word2vec embedding______________", display_current_time())
-    logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
+    # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________", display_current_time())
-    # cross_validation(data_df)
+    cross_validation(data_df)
     print("end time:", display_current_time())
     spark.stop()
 
