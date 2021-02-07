@@ -240,7 +240,7 @@ def cross_validation(total_df):
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
-    conf = SparkConf().setMaster("spark://master:7077")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment")
     spark_context = SparkContext(conf=conf)
     spark = SparkSession(spark_context).builder.master("spark://master:7077")\
         .appName("digikala comments sentiment")\
@@ -275,8 +275,8 @@ if __name__ == '__main__':
 
     print("tf-idf embedding", display_current_time())
     tfidf_train, tfidf_test = build_tfidf(train, test)
-    # print("word2vec embedding", display_current_time())
-    # w2v_train, w2v_test = build_word2vec(train, test)
+    print("word2vec embedding", display_current_time())
+    w2v_train, w2v_test = build_word2vec(train, test)
     tfidf_train.printSchema()
 
     # _____________________ classification part _______________________
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     print("___________RF classifier with tf-idf embedding___________", display_current_time())
     random_forest_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________RF classifier with word2vec embedding______________", display_current_time())
-    # random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
+    random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________NB classifier with tf-idf embedding___________", display_current_time())
     # naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
@@ -298,7 +298,7 @@ if __name__ == '__main__':
     print("___________lgr classifier with tf-idf embedding___________", display_current_time())
     logistic_regression_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________lgr classifier with word2vec embedding______________", display_current_time())
-    # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
+    logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________", display_current_time())
     # cross_validation(data_df)
@@ -313,4 +313,7 @@ if __name__ == '__main__':
     ./start-slave.sh spark://172.23.178.8:7077
     spark-submit --master spark://172.23.178.8:7077  file.py
     start-dfs.sh
+    master:8080  //spark running apps
+    master:4040 //spark jobs, storage ,...
+    master:50070 , master:9000 //hadoop hdfs
 """
