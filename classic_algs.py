@@ -1,13 +1,14 @@
 from __future__ import unicode_literals
 import time
 import glob
+from pyspark.context import SparkConf, SparkContext
 from functools import reduce
 from pyspark.sql import DataFrame
 from hazm import *
 from pyspark.sql.functions import split
 from pyspark.sql.functions import udf
 from pyspark.sql import SparkSession
-from pyspark import SparkContext
+# from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, ArrayType, StringType
 from pyspark.sql.functions import regexp_replace
 from pyspark.ml import Pipeline
@@ -238,9 +239,12 @@ def cross_validation(total_df):
 
 if __name__ == '__main__':
     print("start time:", display_current_time())
-    sc = SparkContext(appName="Mobile")
-    # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("spark://master:7077").appName("Mobile").getOrCreate()
+
+    conf = SparkConf().setMaster("spark://master:7077")
+    spark_context = SparkContext(conf=conf)
+    spark = SparkSession(spark_context).builder.master("spark://master:7077")\
+        .appName("digikala comments sentiment")\
+        .getOrCreate()
     # print("spark", spark.master)
     print("****************************************")
     # _______________________ loading datasets _________________________
