@@ -211,17 +211,17 @@ def cross_validation(total_df):
     folds = 5
     print(folds, "fold cross validation")
 
-    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
-    idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
+    # hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
+    # idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
     print("hashing tf was finished")
     word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
     print("word2vec")
-    rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
-    svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
-    lgr = LogisticRegression(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction',
+    # rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
+    # svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
+    lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
-    pipeline = Pipeline(stages=[hashingTF, idf, lgr])
+    pipeline = Pipeline(stages=[word2vec, lgr])
     # pipeline = Pipeline(stages=[word2vec, lgr])
     param_grid = ParamGridBuilder().build()
     print("param grid")
@@ -240,7 +240,7 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
     sc = SparkContext(appName="Mobile")
     # sc.addPyFile(hazm)
-    spark = SparkSession.builder.master("spark://172.23.178.8:7077").appName("Mobile").getOrCreate()
+    spark = SparkSession.builder.master("spark://master:7077").appName("Mobile").getOrCreate()
     # print("spark", spark.master)
     print("****************************************")
     # _______________________ loading datasets _________________________
@@ -250,9 +250,9 @@ if __name__ == '__main__':
     # data_df = miras_cleaning(data_df)
 
     # data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
-    data_df = spark.read.csv('hdfs://sa-master:9000/user/input/digikala_all.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
-    data_df = data_df.limit(2300000)
+    # data_df = data_df.limit(2300000)
 
     data_df = digikala_crawled_cleaning(data_df)
 
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________", display_current_time())
-    # cross_validation(data_df)
+    cross_validation(data_df)
     print("end time:", display_current_time())
     spark.stop()
 
