@@ -5,8 +5,7 @@ from pyspark.context import SparkConf, SparkContext
 from functools import reduce
 from pyspark.sql import DataFrame
 from hazm import *
-from pyspark.sql.functions import split
-from pyspark.sql.functions import udf
+from pyspark.sql.functions import udf, split
 from pyspark.sql import SparkSession
 # from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, ArrayType, StringType
@@ -70,10 +69,40 @@ def digikala_crawled_cleaning(df):
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
     print("count of labled and non-empty comment_bodies:", df.count())
     # print("advantages", df.select('advantages').show(truncate=False))
+
+    df = get_balance_samples(df)
+
     stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     model = stringIndexer.fit(df)
     df = model.transform(df)
     return df
+
+
+def get_balance_samples(df):
+    print("entered in get_balance_samples func", display_current_time())
+
+    positive_df = df.filter((df.recommendation == 'opinion-positive'))
+    negative_df = df.filter((df.recommendation == 'opinion-negative'))
+    neutral_df = df.filter((df.recommendation == 'opinion-noidea'))
+
+    pos_count = positive_df.count()
+    neg_count = negative_df.count()
+    neut_count = neutral_df.count()
+
+    min_count = min(pos_count, neg_count, neut_count)
+    print("positive comments:", pos_count, "negative comments:", neg_count,
+          "neutral comments:", neut_count)
+    print("min count = ", min_count)
+
+    balance_pos = positive_df.limit(min_count)
+    balance_neg = negative_df.limit(min_count)
+    balance_neut = neutral_df.limit(min_count)
+
+    print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
+          "balance neutral comments:", balance_neut.count())
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
+
+    return balance_df
 
 
 def get_info(df):
@@ -214,9 +243,9 @@ def cross_validation(total_df):
 
     # hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
     # idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
-    print("hashing tf was finished")
+    # print("hashing tf was finished")
     word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
-    # print("word2vec")
+    print("word2vec")
     # rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
     # svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
     lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
@@ -240,10 +269,11 @@ def cross_validation(total_df):
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
-    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment")
+    # master address: "spark://master:7077"
+    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment")
     spark_context = SparkContext(conf=conf)
 
-    spark = SparkSession(spark_context).builder.master("spark://master:7077")\
+    spark = SparkSession(spark_context).builder.master("local[*]")\
         .appName("digikala comments sentiment")\
         .getOrCreate()
     # print("spark", spark.master)
