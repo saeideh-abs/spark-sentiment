@@ -347,5 +347,5 @@ if __name__ == '__main__':
     start-dfs.sh
     master:8080  //spark running apps
     master:4040 //spark jobs, storage ,...
-    master:50070 , master:9000 //hadoop hdfs
+    master:50070 , master:9000, sa-master:9870 //hadoop hdfs
 """
