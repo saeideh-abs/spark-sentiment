@@ -5,7 +5,7 @@ from pyspark.context import SparkConf, SparkContext
 from functools import reduce
 from pyspark.sql import DataFrame
 from hazm import *
-from pyspark.sql.functions import udf, split
+from pyspark.sql.functions import udf, split, concat_ws
 from pyspark.sql import SparkSession
 # from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, ArrayType, StringType
@@ -57,7 +57,10 @@ def miras_cleaning(df):
 
 def digikala_crawled_cleaning(df):
     print("total number of data:", df.count())
-    df = df.withColumnRenamed('comment_body', 'text')
+
+    # df = df.withColumnRenamed('comment_body', 'text')
+    df = df.withColumn('text', concat_ws(' ', df.comment_title, df.comment_body))
+    # df.show(truncate=False)
     # get some info
     df = df.filter((df.recommendation == 'opinion-positive') | (df.recommendation == 'opinion-negative') |
                    (df.recommendation == 'opinion-noidea'))
@@ -244,8 +247,10 @@ def cross_validation(total_df):
     # hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
     # idf = IDF(inputCol=hashingTF.getOutputCol(), outputCol="hashedTfIdf")
     # print("hashing tf was finished")
+
     word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
     print("word2vec")
+
     # rf = RandomForestClassifier(labelCol="accept", featuresCol=idf.getOutputCol(), predictionCol='prediction')
     # svm = LinearSVC(labelCol='accept', featuresCol=idf.getOutputCol(), predictionCol='prediction')
     lgr = LogisticRegression(labelCol='accept', featuresCol=word2vec.getOutputCol(), predictionCol='prediction',
