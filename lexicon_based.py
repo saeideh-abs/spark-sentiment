@@ -4,7 +4,7 @@ import time
 from hazm import *
 from pyspark.context import SparkConf, SparkContext
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat_ws, udf
+from pyspark.sql.functions import concat_ws, udf, regexp_replace
 from functools import reduce
 from pyspark.sql import DataFrame
 from pyspark.sql.types import ArrayType, StringType
@@ -37,9 +37,14 @@ def digikala_crawled_cleaning(df):
 
     # df = get_balance_samples(df)
 
-    stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
-    model = stringIndexer.fit(df)
-    df = model.transform(df)
+    # stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
+    # model = stringIndexer.fit(df)
+    # df = model.transform(df)
+    # # or
+    df = df.withColumn('recommendation', regexp_replace('accept', 'opinion-positive', '1'))
+    df = df.withColumn('recommendation', regexp_replace('accept', 'opinion-negative', '-1'))
+    df = df.withColumn('recommendation', regexp_replace('accept', 'opinion-noidea', '0'))
+
     print(df.select('accept', 'recommendation').show(50, truncate=False))
     return df
 
