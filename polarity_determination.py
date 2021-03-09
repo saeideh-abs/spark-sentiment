@@ -26,12 +26,12 @@ def text_polarity(text):
             score += -1
 
     if score >= 1:
-        label = 'opinion-positive'
+        label = 1.0
     elif score == 0:
-        label = 'opinion-noidea'
+        label = 0.0
     else:
-        label = 'opinion-negative'
-    return label, score
+        label = -1.0
+    return label
 
     # reading lexicons using spark
     # dataheart_lexicon_pos = spark.read.text('./resources/dataheart_lexicon/positive_words.txt')

@@ -4,10 +4,10 @@ import time
 from hazm import *
 from pyspark.context import SparkConf, SparkContext
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat_ws, udf, regexp_replace
+from pyspark.sql.functions import concat_ws, udf, regexp_replace, when
 from functools import reduce
 from pyspark.sql import DataFrame
-from pyspark.sql.types import ArrayType, StringType
+from pyspark.sql.types import ArrayType, StringType, DoubleType
 from pyspark.ml.feature import StringIndexer
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
@@ -26,7 +26,8 @@ def digikala_crawled_cleaning(df):
 
     # get some info
     df = df.filter((df.recommendation == 'opinion-positive') | (df.recommendation == 'opinion-negative') |
-                   (df.recommendation == 'opinion-noidea'))
+                   (df.recommendation == 'opinion-noidea')
+                   )
     print("count of labeled comments", df.count())
     print("positives count:", df.filter(df.recommendation == 'opinion-positive').count())
     print("negatives count:", df.filter(df.recommendation == 'opinion-negative').count())
@@ -35,17 +36,17 @@ def digikala_crawled_cleaning(df):
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
     print("count of labled and non-empty comment_bodies:", df.count())
 
-    # df = get_balance_samples(df)
+    df = get_balance_samples(df)
 
     # stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     # model = stringIndexer.fit(df)
     # df = model.transform(df)
     # # or
-    df = df.withColumn('recommendation', regexp_replace('accept', 'opinion-positive', '1'))
-    df = df.withColumn('recommendation', regexp_replace('accept', 'opinion-negative', '-1'))
-    df = df.withColumn('recommendation', regexp_replace('accept', 'opinion-noidea', '0'))
+    df = df.withColumn('accept', when(df.recommendation == 'opinion-positive', 1.0)
+                       .when(df.recommendation == 'opinion-negative', -1.0)
+                       .when(df.recommendation == 'opinion-noidea', 0.0))
 
-    print(df.select('accept', 'recommendation').show(50, truncate=False))
+    # print(df.select('accept', 'recommendation').show(50, truncate=False))
     return df
 
 
@@ -71,7 +72,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
     return balance_df
 
 
@@ -114,15 +115,26 @@ def text_cleaner(df):
 
 
 def predict_polarities(df):
-    print("entered in lexicon based method")
-    text_polarity_udf = udf(polde.text_polarity, StringType())
+    print("entered in lexicon based method", display_current_time())
+    text_polarity_udf = udf(polde.text_polarity, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text'))
+    result_df.select('accept', 'prediction').show(50, truncate=False)
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
-    print("lexicon based method accuracy = " + str(accuracy))
-    return df
+    print("lexicon based method accuracy = " + str(accuracy), display_current_time())
+    return result_df
+
+
+def binary_confusion_matrix(df, target_col, prediction_col):
+    tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
+    tn = df[(df[target_col] == -1) & (df[prediction_col] == -1)].count()
+    fp = df[(df[target_col] == -1) & (df[prediction_col] == 1)].count()
+    fn = df[(df[target_col] == 1) & (df[prediction_col] == -1)].count()
+
+    print("tp    tn    fp    fn", display_current_time())
+    print(tp, tn, fp, fn)
 
 
 if __name__ == '__main__':
@@ -151,7 +163,7 @@ if __name__ == '__main__':
     data_df = text_cleaner(data_df)
 
     new_df = predict_polarities(data_df)
-    print(new_df.head(20))
+    binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
 
     print("end time:", display_current_time())
     spark.stop()
