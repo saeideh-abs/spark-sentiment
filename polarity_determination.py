@@ -1,4 +1,5 @@
 from hazm import *
+pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 
 
 def load_lexicons():
@@ -14,12 +15,23 @@ def load_lexicons():
     return pos_words, neg_words
 
 
-def text_polarity(text):
+def text_polarity(text, window=3):
     positive_words, negative_words = load_lexicons()
-    words = word_tokenize(text)
+    words = word_tokenize(text)  # use Hazm tokenizer to get tokens
+    part_of_speech = pos_model.tag(words)
     score = 0
 
-    for word in words:
+    for index, word in enumerate(words):
+        if part_of_speech[index][1] == 'V':  # find negative verbs
+            # print(word, part_of_speech[index], part_of_speech)
+            if word[0] == 'ن':  # so the word is negative verb
+                for i in range(window):
+                    if index - i - 1 >= 0:
+                        if words[index - i - 1] in positive_words:
+                            score += -2
+                        elif words[index - i - 1] in negative_words:
+                            score += 2
+
         if word in positive_words:
             score += 1
         if word in negative_words:

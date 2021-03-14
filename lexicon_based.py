@@ -116,28 +116,31 @@ def text_cleaner(df):
 
 def predict_polarities(df):
     print("entered in lexicon based method", display_current_time())
+
     text_polarity_udf = udf(polde.text_polarity, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text'))
+    print("lexicon based polarity ditection was finished", display_current_time())
     result_df.select('accept', 'prediction').show(50, truncate=False)
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("lexicon based method accuracy = " + str(accuracy), display_current_time())
-    tp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
-                                 evaluator.metricLabel: 1.0})
-    fp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
-                                               evaluator.metricLabel: 1.0})
-    print("tp_rate_1,  fp_rate_1:", tp_rate_1, fp_rate_1, display_current_time())
-    tp_rate_neg = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
-                                               evaluator.metricLabel: -1.0})
-    fp_rate_neg = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
-                                               evaluator.metricLabel: -1.0})
-    print("tp_rate_neg,  fp_rate_neg:", tp_rate_neg, fp_rate_neg, display_current_time())
+    # tp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
+    #                              evaluator.metricLabel: 1.0})
+    # fp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
+    #                                            evaluator.metricLabel: 1.0})
+    # print("tp_rate_1,  fp_rate_1:", tp_rate_1, fp_rate_1, display_current_time())
+    # tp_rate_neg = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
+    #                                            evaluator.metricLabel: -1.0})
+    # fp_rate_neg = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
+    #                                            evaluator.metricLabel: -1.0})
+    # print("tp_rate_neg,  fp_rate_neg:", tp_rate_neg, fp_rate_neg, display_current_time())
     return result_df
 
 
 def binary_confusion_matrix(df, target_col, prediction_col):
+    print("binary confusion matrix", display_current_time())
     tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
     tn = df[(df[target_col] == -1) & (df[prediction_col] == -1)].count()
     fp = df[(df[target_col] == -1) & (df[prediction_col] == 1)].count()
@@ -173,7 +176,7 @@ if __name__ == '__main__':
     data_df = text_cleaner(data_df)
 
     new_df = predict_polarities(data_df)
-    # binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
+    binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
 
     print("end time:", display_current_time())
     spark.stop()
