@@ -124,6 +124,16 @@ def predict_polarities(df):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("lexicon based method accuracy = " + str(accuracy), display_current_time())
+    tp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
+                                 evaluator.metricLabel: 1.0})
+    fp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
+                                               evaluator.metricLabel: 1.0})
+    print("tp_rate_1,  fp_rate_1:", tp_rate_1, fp_rate_1, display_current_time())
+    tp_rate_neg = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
+                                               evaluator.metricLabel: -1.0})
+    fp_rate_neg = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
+                                               evaluator.metricLabel: -1.0})
+    print("tp_rate_neg,  fp_rate_neg:", tp_rate_neg, fp_rate_neg, display_current_time())
     return result_df
 
 
@@ -163,7 +173,7 @@ if __name__ == '__main__':
     data_df = text_cleaner(data_df)
 
     new_df = predict_polarities(data_df)
-    binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
+    # binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
 
     print("end time:", display_current_time())
     spark.stop()
