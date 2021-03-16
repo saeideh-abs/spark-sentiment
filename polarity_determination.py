@@ -16,6 +16,7 @@ def load_lexicons():
 
 
 def text_polarity(text, window=3):
+    print(text)
     positive_words, negative_words = load_lexicons()
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     part_of_speech = pos_model.tag(words)
