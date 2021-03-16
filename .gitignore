@@ -2,5 +2,5 @@ venv
 .idea
 .DS_Store
 dataset/*
-resources/*
+#resources/*
 __pycache__/
