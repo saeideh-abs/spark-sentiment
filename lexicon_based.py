@@ -114,60 +114,11 @@ def text_cleaner(df):
     return df
 
 
-def load_lexicons():
-    dataheart_lexicon_pos = open('./resources/dataheart_lexicon/positive_words.txt').read().split('\n')
-    dataheart_lexicon_neg = open('./resources/dataheart_lexicon/negative_words.txt').read().split('\n')
-    textmining_lexicon_pos = open('./resources/text_mining_lexicon/positive.txt').read().split('\n')
-    textmining_lexicon_neg = open('./resources/text_mining_lexicon/negative.txt').read().split('\n')
-    infogain_lexicon_pos = open('./resources/infogain_features/positive.txt').read().split('\n')
-    infogain_lexicon_neg = open('./resources/infogain_features/negative.txt').read().split('\n')
-
-    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_lexicon_pos
-    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_lexicon_neg
-    return pos_words, neg_words
-
-
-pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
-
-@udf(returnType=DoubleType())
-def text_polarity(text, window=3):
-    print(text)
-    positive_words, negative_words = load_lexicons()
-    words = word_tokenize(text)  # use Hazm tokenizer to get tokens
-    part_of_speech = pos_model.tag(words)
-    score = 0
-
-    for index, word in enumerate(words):
-        if part_of_speech[index][1] == 'V':  # find negative verbs
-            # print(word, part_of_speech[index], part_of_speech)
-            if word[0] == 'ن':  # so the word is negative verb
-                for i in range(window):
-                    if index - i - 1 >= 0:
-                        if words[index - i - 1] in positive_words:
-                            score += -2
-                        elif words[index - i - 1] in negative_words:
-                            score += 2
-
-        if word in positive_words:
-            score += 1
-        if word in negative_words:
-            score += -1
-
-    if score >= 1:
-        label = 1.0
-    elif score == 0:
-        label = 0.0
-    else:
-        label = -1.0
-    # print(part_of_speech, score, label)
-    return label
-
-
 def predict_polarities(df):
     print("entered in lexicon based method", display_current_time())
 
-    text_polarity_udf = udf(lambda txt: text_polarity(txt), DoubleType())
-    result_df = df.withColumn('prediction', text_polarity('clean_text'))
+    text_polarity_udf = udf(polde.text_polarity, DoubleType())
+    result_df = df.withColumn('prediction', text_polarity_udf('clean_text'))
     result_df.select('accept', 'prediction').show(50, truncate=False)
     print("lexicon based polarity ditection was finished", display_current_time())
 
@@ -199,13 +150,10 @@ def binary_confusion_matrix(df, target_col, prediction_col):
     fnup = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
     fnun = df[(df[target_col] == -1) & (df[prediction_col] == 0)].count()
 
-    fpnu = df[(df[target_col] == 0) & (df[prediction_col] == 1)].count()
-    fnnu = df[(df[target_col] == 0) & (df[prediction_col] == -1)].count()
-
     print("tp    tn    fp    fn", display_current_time())
     print(tp, tn, fp, fn)
-    print("tnu       fnup       fnun    fpnu    fnnu")
-    print(tnu, fnup, fnun, fpnu, fnnu)
+    print("tnu       fnup       fnun")
+    print(tnu, fnup, fnun)
 
 
 if __name__ == '__main__':
@@ -214,7 +162,6 @@ if __name__ == '__main__':
     # _______________________ spark configs _________________________
     conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, lexicon based")
     spark_context = SparkContext(conf=conf)
-    spark_context.addPyFile('polarity_determination.py')
 
     spark = SparkSession(spark_context).builder.master("local[*]") \
         .appName("digikala comments sentiment, lexicon based") \
