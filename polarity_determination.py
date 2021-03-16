@@ -43,6 +43,7 @@ def text_polarity(text, window=3):
         label = 0.0
     else:
         label = -1.0
+    # print(part_of_speech, score, label)
     return label
 
     # reading lexicons using spark

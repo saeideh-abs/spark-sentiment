@@ -72,7 +72,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
+    balance_df = reduce(DataFrame.unionAll, [balance_neg, balance_pos, balance_neut])
     return balance_df
 
 
@@ -119,8 +119,8 @@ def predict_polarities(df):
 
     text_polarity_udf = udf(polde.text_polarity, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text'))
-    print("lexicon based polarity ditection was finished", display_current_time())
     result_df.select('accept', 'prediction').show(50, truncate=False)
+    print("lexicon based polarity ditection was finished", display_current_time())
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
                                                   metricName="accuracy")
@@ -146,8 +146,14 @@ def binary_confusion_matrix(df, target_col, prediction_col):
     fp = df[(df[target_col] == -1) & (df[prediction_col] == 1)].count()
     fn = df[(df[target_col] == 1) & (df[prediction_col] == -1)].count()
 
+    tnu = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
+    fnup = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
+    fnun = df[(df[target_col] == -1) & (df[prediction_col] == 0)].count()
+
     print("tp    tn    fp    fn", display_current_time())
     print(tp, tn, fp, fn)
+    print("tnu       fnup       fnun")
+    print(tnu, fnup, fnun)
 
 
 if __name__ == '__main__':
