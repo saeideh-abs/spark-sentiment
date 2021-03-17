@@ -8,8 +8,8 @@ def load_lexicons():
     dataheart_lexicon_neg = open('./resources/dataheart_lexicon/negative_words.txt').read().split('\n')
     textmining_lexicon_pos = open('./resources/text_mining_lexicon/positive.txt').read().split('\n')
     textmining_lexicon_neg = open('./resources/text_mining_lexicon/negative.txt').read().split('\n')
-    infogain_lexicon_pos = open('./resources/infogain_features/positive.txt').read().split('\n')
-    infogain_lexicon_neg = open('./resources/infogain_features/negative.txt').read().split('\n')
+    infogain_lexicon_pos = open('./resources/infogain_snapfood/positive.txt').read().split('\n')
+    infogain_lexicon_neg = open('./resources/infogain_snapfood/negative.txt').read().split('\n')
 
     pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_lexicon_pos
     neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_lexicon_neg
