@@ -72,7 +72,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_neg, balance_pos, balance_neut])
+    balance_df = reduce(DataFrame.unionAll, [balance_neg, balance_pos])
     return balance_df
 
 
@@ -146,12 +146,13 @@ def binary_confusion_matrix(df, target_col, prediction_col):
     fp = df[(df[target_col] == -1) & (df[prediction_col] == 1)].count()
     fn = df[(df[target_col] == 1) & (df[prediction_col] == -1)].count()
 
+    print("tp    tn    fp    fn", display_current_time())
+    print(tp, tn, fp, fn)
+
     tnu = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
     fnup = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
     fnun = df[(df[target_col] == -1) & (df[prediction_col] == 0)].count()
 
-    print("tp    tn    fp    fn", display_current_time())
-    print(tp, tn, fp, fn)
     print("tnu       fnup       fnun")
     print(tnu, fnup, fnun)
 

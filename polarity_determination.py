@@ -1,4 +1,5 @@
 from hazm import *
+from nltk import ngrams
 pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 
 
@@ -16,9 +17,9 @@ def load_lexicons():
 
 
 def text_polarity(text, window=3):
-    print(text)
     positive_words, negative_words = load_lexicons()
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
+    bigrams = ngrams(words, 2)
     part_of_speech = pos_model.tag(words)
     score = 0
 
@@ -32,11 +33,18 @@ def text_polarity(text, window=3):
                             score += -2
                         elif words[index - i - 1] in negative_words:
                             score += 2
-
+        # check unigrams
         if word in positive_words:
             score += 1
         if word in negative_words:
             score += -1
+        # check bigrams
+        for grams in bigrams:
+            token = ' '.join(grams)
+            if token in positive_words:
+                score += 1
+            if token in negative_words:
+                score += -1
 
     if score >= 1:
         label = 1.0
