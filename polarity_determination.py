@@ -16,7 +16,7 @@ def load_lexicons():
     return pos_words, neg_words
 
 
-def text_polarity(text, window=3):
+def text_polarity(text, window=2):
     positive_words, negative_words = load_lexicons()
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     bigrams = ngrams(words, 2)
