@@ -55,7 +55,7 @@ def text_polarity(text, window=2):
     # print(part_of_speech, score, label)
     return label
 
-    # reading lexicons using spark
+    # # reading lexicons using spark
     # dataheart_lexicon_pos = spark.read.text('./resources/dataheart_lexicon/positive_words.txt')
     # dataheart_lexicon_neg = spark.read.text('./resources/dataheart_lexicon/negative_words.txt')
     # textmining_lexicon_pos = spark.read.text('./resources/text_mining_lexicon/positive.txt')
