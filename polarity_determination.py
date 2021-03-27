@@ -1,11 +1,10 @@
-'''
+"""
 this module is for predicting text polarity using sensory lexicons and rule based methods
-'''
+"""
 
 from hazm import *
 import pandas as pd
 from nltk import ngrams
-pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 
 
 def load_lexicons():
@@ -31,8 +30,11 @@ def load_lexicons():
     return pos_words, neg_words
 
 
+positive_words, negative_words = load_lexicons()
+pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
+
+
 def text_polarity(text, window=2):
-    positive_words, negative_words = load_lexicons()
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     bigrams = ngrams(words, 2)
     trigrams = ngrams(words, 3)
@@ -63,6 +65,7 @@ def text_polarity(text, window=2):
                 score += -1
         # check trigrams
         for grams in trigrams:
+            # print(grams)
             trigram = ' '.join(grams)
             if trigram in positive_words:
                 score += 1
