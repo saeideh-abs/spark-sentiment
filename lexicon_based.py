@@ -178,6 +178,8 @@ if __name__ == '__main__':
     get_info(data_df)
 
     # ____________________ preprocessing _____________________
+    train, data_df = data_df.randomSplit([0.7, 0.3], seed=42)
+
     data_df = data_df.select('text', 'accept')
     print("text cleaner func", display_current_time())
     data_df = text_cleaner(data_df)
