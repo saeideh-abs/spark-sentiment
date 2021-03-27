@@ -35,6 +35,7 @@ def text_polarity(text, window=2):
     positive_words, negative_words = load_lexicons()
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     bigrams = ngrams(words, 2)
+    trigrams = ngrams(words, 3)
     part_of_speech = pos_model.tag(words)
     score = 0
 
@@ -55,10 +56,17 @@ def text_polarity(text, window=2):
             score += -1
         # check bigrams
         for grams in bigrams:
-            token = ' '.join(grams)
-            if token in positive_words:
+            bigram = ' '.join(grams)
+            if bigram in positive_words:
                 score += 1
-            if token in negative_words:
+            if bigram in negative_words:
+                score += -1
+        # check trigrams
+        for grams in trigrams:
+            trigram = ' '.join(grams)
+            if trigram in positive_words:
+                score += 1
+            if trigram in negative_words:
                 score += -1
 
     if score >= 1:
