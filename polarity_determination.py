@@ -6,13 +6,18 @@ pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 def load_lexicons():
     dataheart_lexicon_pos = open('./resources/dataheart_lexicon/positive_words.txt').read().split('\n')
     dataheart_lexicon_neg = open('./resources/dataheart_lexicon/negative_words.txt').read().split('\n')
+
     textmining_lexicon_pos = open('./resources/text_mining_lexicon/positive.txt').read().split('\n')
     textmining_lexicon_neg = open('./resources/text_mining_lexicon/negative.txt').read().split('\n')
-    infogain_lexicon_pos = open('./resources/infogain_snapfood/positive.txt').read().split('\n')
-    infogain_lexicon_neg = open('./resources/infogain_snapfood/negative.txt').read().split('\n')
 
-    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_lexicon_pos
-    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_lexicon_neg
+    infogain_snapfood_pos = open('./resources/infogain_snapfood/positive.txt').read().split('\n')
+    infogain_snapfood_neg = open('./resources/infogain_snapfood/negative.txt').read().split('\n')
+
+    infogain_digikala_pos = open('./resources/infogain_digikala/positive_words.txt').read().split('\n')
+    infogain_digikala_neg = open('./resources/infogain_digikala/negative_words.txt').read().split('\n')
+
+    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_snapfood_pos + infogain_digikala_pos
+    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_snapfood_neg + infogain_digikala_neg
     return pos_words, neg_words
 
 
