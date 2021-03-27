@@ -1,4 +1,9 @@
+'''
+this module is for predicting text polarity using sensory lexicons and rule based methods
+'''
+
 from hazm import *
+import pandas as pd
 from nltk import ngrams
 pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 
@@ -15,6 +20,10 @@ def load_lexicons():
 
     infogain_digikala_pos = open('./resources/infogain_digikala/positive_words.txt').read().split('\n')
     infogain_digikala_neg = open('./resources/infogain_digikala/negative_words.txt').read().split('\n')
+
+    print("senti fars lexicon")
+    sentifars = pd.read_excel('./resources/SentiFars_lexicon/SentiFars_lexicon.xlsx')
+    print(sentifars)
 
     pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_snapfood_pos + infogain_digikala_pos
     neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_snapfood_neg + infogain_digikala_neg
