@@ -21,12 +21,13 @@ def load_lexicons():
     infogain_digikala_pos = open('./resources/infogain_digikala/positive_words.txt').read().split('\n')
     infogain_digikala_neg = open('./resources/infogain_digikala/negative_words.txt').read().split('\n')
 
-    print("senti fars lexicon")
-    sentifars = pd.read_excel('./resources/SentiFars_lexicon/SentiFars_lexicon.xlsx')
-    print(sentifars)
+    sentifars_lexicon_pos = open('./resources/SentiFars_lexicon/positive.txt').read().split('\n')
+    sentifars_lexicon_neg = open('./resources/SentiFars_lexicon/negative.txt').read().split('\n')
 
-    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_snapfood_pos + infogain_digikala_pos
-    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_snapfood_neg + infogain_digikala_neg
+    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + infogain_snapfood_pos\
+                + infogain_digikala_pos + sentifars_lexicon_pos
+    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + infogain_snapfood_neg\
+                + infogain_digikala_neg + sentifars_lexicon_neg
     return pos_words, neg_words
 
 
