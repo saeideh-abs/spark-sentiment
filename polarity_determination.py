@@ -41,6 +41,7 @@ def text_polarity(text, window=2):
     part_of_speech = pos_model.tag(words)
     score = 0
 
+    # check unigrams
     for index, word in enumerate(words):
         if part_of_speech[index][1] == 'V':  # find negative verbs
             # print(word, part_of_speech[index], part_of_speech)
@@ -51,26 +52,24 @@ def text_polarity(text, window=2):
                             score += -2
                         elif words[index - i - 1] in negative_words:
                             score += 2
-        # check unigrams
         if word in positive_words:
             score += 1
         if word in negative_words:
             score += -1
-        # check bigrams
-        for grams in bigrams:
-            bigram = ' '.join(grams)
-            if bigram in positive_words:
-                score += 1
-            if bigram in negative_words:
-                score += -1
-        # check trigrams
-        for grams in trigrams:
-            # print(grams)
-            trigram = ' '.join(grams)
-            if trigram in positive_words:
-                score += 1
-            if trigram in negative_words:
-                score += -1
+    # check bigrams
+    for grams in bigrams:
+        bigram = ' '.join(grams)
+        if bigram in positive_words:
+            score += 1
+        if bigram in negative_words:
+            score += -1
+    # check trigrams
+    for grams in trigrams:
+        trigram = ' '.join(grams)
+        if trigram in positive_words:
+            score += 1
+        if trigram in negative_words:
+            score += -1
 
     if score >= 1:
         label = 1.0

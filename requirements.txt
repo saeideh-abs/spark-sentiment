@@ -5,4 +5,4 @@ py4j~=0.10.9
 scipy~=1.5.2
 psutil~=3.4.2
 setuptools~=50.3.0
-nltk~=3.3
+nltk~=3.5
