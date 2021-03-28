@@ -19,7 +19,9 @@ def display_current_time():
 
 
 def digikala_crawled_cleaning(df):
-    print("total number of data:", df.count())
+    print("total number of data:", df.count(), display_current_time())
+    df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
+    print("number of data after removing duplicates:", df.count(), display_current_time())
 
     # df = df.withColumnRenamed('comment_body', 'text')
     df = df.withColumn('text', concat_ws(' ', df.comment_title, df.comment_body))
@@ -35,7 +37,7 @@ def digikala_crawled_cleaning(df):
 
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
     print("count of labled and non-empty comment_bodies:", df.count())
-
+    
     df = get_balance_samples(df)
 
     # stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
@@ -171,7 +173,7 @@ if __name__ == '__main__':
 
     # _______________________ loading dataset _________________________
     data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
-    data_df = data_df.limit(100000)
+    # data_df = data_df.limit(100000)
     # data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
@@ -186,6 +188,7 @@ if __name__ == '__main__':
     print("text cleaner func", display_current_time())
     data_df = text_cleaner(data_df)
 
+    # ____________________ classification using lexicons _____________________
     new_df = predict_polarities(data_df)
     binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
 

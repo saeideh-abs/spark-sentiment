@@ -57,10 +57,12 @@ def miras_cleaning(df):
 
 def digikala_crawled_cleaning(df):
     print("total number of data:", df.count())
+    df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
+    print("number of data after removing duplicates:", df.count(), display_current_time())
 
     # df = df.withColumnRenamed('comment_body', 'text')
     df = df.withColumn('text', concat_ws(' ', df.comment_title, df.comment_body))
-    # df.show(truncate=False)
+
     # get some info
     df = df.filter((df.recommendation == 'opinion-positive') | (df.recommendation == 'opinion-negative') |
                    (df.recommendation == 'opinion-noidea'))
