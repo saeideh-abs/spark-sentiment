@@ -3,7 +3,7 @@ this module is for predicting text polarity using sensory lexicons and rule base
 """
 
 from hazm import *
-import pandas as pd
+import ast
 from nltk import ngrams
 
 
@@ -34,13 +34,17 @@ positive_words, negative_words = load_lexicons()
 pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 
 
-def text_polarity(text, window=2):
+def text_polarity(text, advantages, disadvantages, window=2):
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     bigrams = ngrams(words, 2)
     trigrams = ngrams(words, 3)
     part_of_speech = pos_model.tag(words)
     score = 0
 
+    advantages = ast.literal_eval(advantages)
+    disadvantages = ast.literal_eval(disadvantages)
+    advan_score = calc_advan_disadvan_score(advantages, disadvantages)
+    
     # check unigrams
     for index, word in enumerate(words):
         if part_of_speech[index][1] == 'V':  # find negative verbs
@@ -71,6 +75,8 @@ def text_polarity(text, window=2):
         if trigram in negative_words:
             score += -1
 
+    score = score + advan_score
+
     if score >= 1:
         label = 1.0
     elif score == 0:
@@ -80,14 +86,44 @@ def text_polarity(text, window=2):
     # print(part_of_speech, score, label)
     return label
 
-    # # reading lexicons using spark
-    # dataheart_lexicon_pos = spark.read.text('./resources/dataheart_lexicon/positive_words.txt')
-    # dataheart_lexicon_neg = spark.read.text('./resources/dataheart_lexicon/negative_words.txt')
-    # textmining_lexicon_pos = spark.read.text('./resources/text_mining_lexicon/positive.txt')
-    # textmining_lexicon_neg = spark.read.text('./resources/text_mining_lexicon/negative.txt')
-    # infogain_lexicon_pos = spark.read.text('./resources/infogain_features/positive.txt')
-    # infogain_lexicon_neg = spark.read.text('./resources/infogain_features/negative.txt')
-    #
-    # pos_words = reduce(DataFrame.unionAll, [dataheart_lexicon_pos, textmining_lexicon_pos, infogain_lexicon_pos])
-    # neg_words = reduce(DataFrame.unionAll, [dataheart_lexicon_neg, textmining_lexicon_neg, infogain_lexicon_neg])
-    # neg_words.printSchema()
+
+def calc_advan_disadvan_score(advantages, disadvantages):
+    exceptions = ['ندیدم', 'نبود', 'نیست', 'هیچی', 'هیچ', 'ندارد', 'ندارد ', 'نداره ', 'نداره', 'نداشت']
+    advan_score = 0
+    disadvan_score = 0
+
+    for item in advantages:
+        if item in exceptions:
+            advan_score += -1
+        else:
+            advan_score += 1
+    for item in disadvantages:
+        if item in exceptions:
+            disadvan_score += 1
+        else:
+            disadvan_score += -1
+    final_score = advan_score + disadvan_score
+    return final_score
+
+
+
+# # reading lexicons using spark
+# dataheart_lexicon_pos = spark.read.text('./resources/dataheart_lexicon/positive_words.txt')
+# dataheart_lexicon_neg = spark.read.text('./resources/dataheart_lexicon/negative_words.txt')
+# textmining_lexicon_pos = spark.read.text('./resources/text_mining_lexicon/positive.txt')
+# textmining_lexicon_neg = spark.read.text('./resources/text_mining_lexicon/negative.txt')
+# infogain_lexicon_pos = spark.read.text('./resources/infogain_features/positive.txt')
+# infogain_lexicon_neg = spark.read.text('./resources/infogain_features/negative.txt')
+#
+# pos_words = reduce(DataFrame.unionAll, [dataheart_lexicon_pos, textmining_lexicon_pos, infogain_lexicon_pos])
+# neg_words = reduce(DataFrame.unionAll, [dataheart_lexicon_neg, textmining_lexicon_neg, infogain_lexicon_neg])
+# neg_words.printSchema()
+
+# نداشت
+# ندارد
+# نداره
+# هیچ
+# هیچی
+# نیست
+# نبود
+# ندیدم
