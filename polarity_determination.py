@@ -118,3 +118,12 @@ def calc_advan_disadvan_score(advantages, disadvantages):
 # pos_words = reduce(DataFrame.unionAll, [dataheart_lexicon_pos, textmining_lexicon_pos, infogain_lexicon_pos])
 # neg_words = reduce(DataFrame.unionAll, [dataheart_lexicon_neg, textmining_lexicon_neg, infogain_lexicon_neg])
 # neg_words.printSchema()
+
+
+# خوبن
+# خوبیه
+# میارزه
+# کیفیت
+# به صرفه
+# به‌صرفه
+# خوشگلن

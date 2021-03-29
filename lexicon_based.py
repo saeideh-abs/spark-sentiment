@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import polarity_determination as polde
 import time
+import ast
 from hazm import *
 from pyspark.context import SparkConf, SparkContext
 from pyspark.sql import SparkSession
@@ -18,12 +19,29 @@ def display_current_time():
     return current_time
 
 
+@udf(returnType=StringType())
+def list2string_udf(list):
+    list = ast.literal_eval(list)
+    # str = ' '.join(list)
+    str = ''
+    for item in list:
+        str = str + ' ' + item.strip('\r')
+
+    return str
+
+
 def digikala_crawled_cleaning(df):
     print("total number of data:", df.count(), display_current_time())
     df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
     print("number of data after removing duplicates:", df.count(), display_current_time())
 
     # df = df.withColumnRenamed('comment_body', 'text')
+
+    # df = df.withColumn('advantages_str', list2string_udf(df.advantages))
+    # df = df.withColumn('disadvantages_str', list2string_udf(df.disadvantages))
+    # df = df.withColumn('text',
+    #                    concat_ws(' ', df.comment_title, df.comment_body, df.advantages_str, df.disadvantages_str))
+
     df = df.withColumn('text', concat_ws(' ', df.comment_title, df.comment_body))
 
     # get some info
@@ -121,7 +139,7 @@ def predict_polarities(df):
 
     text_polarity_udf = udf(polde.text_polarity, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
-    result_df.select('accept', 'prediction').show(50, truncate=False)
+    # result_df.select('accept', 'prediction').show(50, truncate=False)
     print("lexicon based polarity ditection was finished", display_current_time())
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
