@@ -93,7 +93,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_neg, balance_pos])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
     return balance_df
 
 
@@ -157,10 +157,10 @@ def lexicon_based(df):
     result_df = df.withColumn('lexicon_prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
     print("lexicon based polarity ditection was finished", display_current_time())
 
-    # evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lexicon_prediction",
-    #                                               metricName="accuracy")
-    # accuracy = evaluator.evaluate(result_df)
-    # print("lexicon based method accuracy = " + str(accuracy), display_current_time())
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lexicon_prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(result_df)
+    print("lexicon based method accuracy = " + str(accuracy), display_current_time())
     return result_df
 
 
@@ -174,13 +174,13 @@ def logistic_regression_classification(train_df, test_df, feature_col):
     result_df = result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction')\
         .withColumnRenamed('probability', 'lgrProbability')
 
-    binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
-    result_df.printSchema()
+    # result_df.printSchema()
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("LGR Test set accuracy = " + str(accuracy), display_current_time())
+    binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
     return result_df
 
 
@@ -192,13 +192,13 @@ def random_forest_classification(train_df, test_df, feature_col):
     result_df = result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
         .withColumnRenamed('probability', 'rfProbability')
 
-    binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
-    result_df.printSchema()
+    # result_df.printSchema()
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("RF Test set accuracy = " + str(accuracy))
+    binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
     return result_df
 
 
@@ -225,6 +225,7 @@ def soft_voting(df):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("ensemble clf Test set accuracy = " + str(accuracy))
+    binary_confusion_matrix(result_df, 'accept', 'ensemble_prediction')
     return result_df
 
 
@@ -262,7 +263,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    data_df = data_df.limit(100000)
+    # data_df = data_df.limit(100000)
     data_df = digikala_crawled_cleaning(data_df)
     get_info(data_df)
 
@@ -282,7 +283,7 @@ if __name__ == '__main__':
     result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = soft_voting(result_df)
-    result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
-        .show(50, truncate=False)
+    # result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
+    #     .show(50, truncate=False)
     print("end time:", display_current_time())
     spark.stop()
