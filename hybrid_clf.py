@@ -157,34 +157,38 @@ def lexicon_based(df):
     result_df = df.withColumn('lexicon_prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
     print("lexicon based polarity ditection was finished", display_current_time())
 
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lexicon_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("lexicon based method accuracy = " + str(accuracy), display_current_time())
+    # evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lexicon_prediction",
+    #                                               metricName="accuracy")
+    # accuracy = evaluator.evaluate(result_df)
+    # print("lexicon based method accuracy = " + str(accuracy), display_current_time())
     return result_df
 
 
 def logistic_regression_classification(train_df, test_df, feature_col):
+    print("entered in logistic regression clf", display_current_time())
     lgr = LogisticRegression(labelCol='accept', featuresCol=feature_col, predictionCol='lgr_prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
     model = lgr.fit(train_df)
     result_df = model.transform(test_df)
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("LGR Test set accuracy = " + str(accuracy))
+    result_df.printSchema()
+    # evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
+    #                                               metricName="accuracy")
+    # accuracy = evaluator.evaluate(result_df)
+    # print("LGR Test set accuracy = " + str(accuracy), display_current_time())
     return result_df
 
 
 def random_forest_classification(train_df, test_df, feature_col):
+    print("entered in rf clf", display_current_time())
     rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='rf_prediction')
     model = rf.fit(train_df)
     result_df = model.transform(test_df)
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("RF Test set accuracy = " + str(accuracy))
+    result_df.printSchema()
+    # evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
+    #                                               metricName="accuracy")
+    # accuracy = evaluator.evaluate(result_df)
+    # print("RF Test set accuracy = " + str(accuracy))
     return result_df
 
 
