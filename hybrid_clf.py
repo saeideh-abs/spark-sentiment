@@ -173,9 +173,10 @@ def logistic_regression_classification(train_df, test_df, feature_col):
     result_df = model.transform(test_df)
     result_df = result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction')\
         .withColumnRenamed('probability', 'lgrProbability')
+
     binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
     result_df.printSchema()
-    # result_df.show(10, truncate=False)
+
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
@@ -188,15 +189,42 @@ def random_forest_classification(train_df, test_df, feature_col):
     rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='rf_prediction')
     model = rf.fit(train_df)
     result_df = model.transform(test_df)
-
     result_df = result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
         .withColumnRenamed('probability', 'rfProbability')
+
     binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
     result_df.printSchema()
+
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("RF Test set accuracy = " + str(accuracy))
+    return result_df
+
+
+@udf(returnType=DoubleType())
+def ensemble_predict_udf(lexicon_label, lgr_label, rf_label, lgrProbability, rfProbability):
+    if lgr_label == lexicon_label and lgr_label == rf_label:
+        label = lgr_label
+    else:
+        rf_label_prob = max(rfProbability)
+        lgr_label_prob = max(lgrProbability)
+        if rf_label_prob > lgr_label_prob:
+            label = rf_label
+        else:
+            label = lgr_label
+    return label
+
+
+def soft_voting(df):
+    print("entered in soft voting ", display_current_time())
+    result_df = df.withColumn('ensemble_prediction', ensemble_predict_udf(
+        'lexicon_prediction', 'lgr_prediction', 'rf_prediction', 'lgrProbability', 'rfProbability'))
+
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="ensemble_prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(result_df)
+    print("ensemble clf Test set accuracy = " + str(accuracy))
     return result_df
 
 
@@ -253,7 +281,8 @@ if __name__ == '__main__':
     result_df = lexicon_based(w2v_test)
     result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
-    result_df.select('accept', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
+    result_df = soft_voting(result_df)
+    result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
         .show(50, truncate=False)
     print("end time:", display_current_time())
     spark.stop()
