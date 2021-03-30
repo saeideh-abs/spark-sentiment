@@ -174,6 +174,7 @@ def logistic_regression_classification(train_df, test_df, feature_col):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("LGR Test set accuracy = " + str(accuracy))
+    return result_df
 
 
 def random_forest_classification(train_df, test_df, feature_col):
@@ -184,6 +185,7 @@ def random_forest_classification(train_df, test_df, feature_col):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("RF Test set accuracy = " + str(accuracy))
+    return result_df
 
 
 def binary_confusion_matrix(df, target_col, prediction_col):
@@ -234,13 +236,10 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    # lexicon based
-    lexicon_pred_df = lexicon_based(test)
-
-    # ml classic algorithms
     w2v_train, w2v_test = build_word2vec(train, test)
-    logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
-    random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
-
+    result_df = lexicon_based(w2v_test)
+    result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
+    result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
+    result_df.select('accept', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction').show(50, truncate=False)
     print("end time:", display_current_time())
     spark.stop()
