@@ -276,6 +276,7 @@ def cross_validation(total_df):
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
+    # _______________________ spark configs _________________________
     # master address: "spark://master:7077"
     conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment")
     spark_context = SparkContext(conf=conf)
@@ -285,6 +286,7 @@ if __name__ == '__main__':
         .getOrCreate()
     # print("spark", spark.master)
     print("****************************************")
+
     # _______________________ loading datasets _________________________
     # data_df = spark.read.csv('./dataset/3000ـmobile_digikala.csv', inferSchema=True, header=True)
 
