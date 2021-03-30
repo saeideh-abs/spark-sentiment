@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from modules import polarity_determination as polde
+import polarity_determination as polde
 import time
 import ast
 from hazm import *
