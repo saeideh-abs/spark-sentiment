@@ -171,11 +171,15 @@ def logistic_regression_classification(train_df, test_df, feature_col):
                              )
     model = lgr.fit(train_df)
     result_df = model.transform(test_df)
+    result_df = result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction')\
+        .withColumnRenamed('probability', 'lgrProbability')
+    binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
     result_df.printSchema()
-    # evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
-    #                                               metricName="accuracy")
-    # accuracy = evaluator.evaluate(result_df)
-    # print("LGR Test set accuracy = " + str(accuracy), display_current_time())
+    # result_df.show(10, truncate=False)
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(result_df)
+    print("LGR Test set accuracy = " + str(accuracy), display_current_time())
     return result_df
 
 
@@ -184,27 +188,31 @@ def random_forest_classification(train_df, test_df, feature_col):
     rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='rf_prediction')
     model = rf.fit(train_df)
     result_df = model.transform(test_df)
+
+    result_df = result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
+        .withColumnRenamed('probability', 'rfProbability')
+    binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
     result_df.printSchema()
-    # evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
-    #                                               metricName="accuracy")
-    # accuracy = evaluator.evaluate(result_df)
-    # print("RF Test set accuracy = " + str(accuracy))
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(result_df)
+    print("RF Test set accuracy = " + str(accuracy))
     return result_df
 
 
 def binary_confusion_matrix(df, target_col, prediction_col):
     print("binary confusion matrix", display_current_time())
     tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
-    tn = df[(df[target_col] == -1) & (df[prediction_col] == -1)].count()
-    fp = df[(df[target_col] == -1) & (df[prediction_col] == 1)].count()
-    fn = df[(df[target_col] == 1) & (df[prediction_col] == -1)].count()
+    tn = df[(df[target_col] == 2) & (df[prediction_col] == 2)].count()
+    fp = df[(df[target_col] == 2) & (df[prediction_col] == 1)].count()
+    fn = df[(df[target_col] == 1) & (df[prediction_col] == 2)].count()
 
     print("tp    tn    fp    fn", display_current_time())
     print(tp, tn, fp, fn)
 
     tnu = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
     fnup = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
-    fnun = df[(df[target_col] == -1) & (df[prediction_col] == 0)].count()
+    fnun = df[(df[target_col] == 2) & (df[prediction_col] == 0)].count()
 
     print("tnu       fnup       fnun")
     print(tnu, fnup, fnun)
@@ -226,6 +234,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
+    data_df = data_df.limit(100000)
     data_df = digikala_crawled_cleaning(data_df)
     get_info(data_df)
 
@@ -244,6 +253,7 @@ if __name__ == '__main__':
     result_df = lexicon_based(w2v_test)
     result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
-    result_df.select('accept', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction').show(50, truncate=False)
+    result_df.select('accept', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
+        .show(50, truncate=False)
     print("end time:", display_current_time())
     spark.stop()
