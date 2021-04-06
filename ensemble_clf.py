@@ -64,8 +64,8 @@ def digikala_crawled_cleaning(df):
     # df = model.transform(df)
     # # or
     df = df.withColumn('accept', when(df.recommendation == 'opinion-positive', 1.0)
-                       .when(df.recommendation == 'opinion-negative', 2.0)
-                       .when(df.recommendation == 'opinion-noidea', 0.0))
+                       .when(df.recommendation == 'opinion-negative', 0.0)
+                       .when(df.recommendation == 'opinion-noidea', 2.0))
 
     # print(df.select('accept', 'recommendation').show(50, truncate=False))
     return df
@@ -206,6 +206,7 @@ def naive_bayes_classification(train_df, test_df, feature_col):
                     predictionCol='nb_prediction')
     model = nb.fit(train_df)
     result_df = model.transform(test_df)
+    # result_df.printSchema()
     result_df = result_df.withColumnRenamed('rawPrediction', 'nbRawPrediction')\
         .withColumnRenamed('probability', 'nbProbability')
 
@@ -213,6 +214,7 @@ def naive_bayes_classification(train_df, test_df, feature_col):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("NB Test set accuracy = " + str(accuracy), display_current_time())
+    # result_df.select('accept', 'nb_prediction', 'lexicon_prediction').show(50, truncate=False)
     # binary_confusion_matrix(result_df, 'accept', 'nb_prediction')
     return result_df
 
@@ -297,7 +299,9 @@ if __name__ == '__main__':
     print("data was loaded from hdfs", display_current_time())
 
     # data_df = data_df.limit(100000)
+    data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
+    data_df = data_df.repartition(spark_context.defaultParallelism)
     get_info(data_df)
 
     # ____________________ preprocessing _____________________
@@ -307,7 +311,9 @@ if __name__ == '__main__':
     print("tokenizer", display_current_time())
     data_df = tokenization(data_df)
 
-    train, test = data_df.randomSplit([0.7, 0.3], seed=42)
+    train, test = data_df.randomSplit([0.7, 0.3],
+                                      seed=42
+                                      )
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
@@ -317,6 +323,7 @@ if __name__ == '__main__':
     result_df = lexicon_based(w2v_test)
     # result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
+    print("number of partitions: ", data_df.rdd.getNumPartitions())
     result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = soft_voting(result_df)
     # result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
