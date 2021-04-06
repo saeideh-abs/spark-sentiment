@@ -105,7 +105,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
 
     return balance_df
 
@@ -310,11 +310,11 @@ if __name__ == '__main__':
     print("tokenizer", display_current_time())
     data_df = tokenization(data_df)
     # data_df.select('tokens').show(truncate=False)
-    # train, test = data_df.randomSplit([0.7, 0.3], seed=42)
+    train, test = data_df.randomSplit([0.7, 0.3], seed=42)
     # print("train and test count", train.count(), test.count(), display_current_time())
 
-    # print("tf-idf embedding", display_current_time())
-    # tfidf_train, tfidf_test = build_tfidf(train, test)
+    print("tf-idf embedding", display_current_time())
+    tfidf_train, tfidf_test = build_tfidf(train, test)
     # print("word2vec embedding", display_current_time())
     # w2v_train, w2v_test = build_word2vec(train, test)
     # tfidf_train.printSchema()
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     # random_forest_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("___________NB classifier with tf-idf embedding___________", display_current_time())
-    # naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
+    naive_bayes_classification(tfidf_train, tfidf_test, feature_col='hashedTfIdf')
     print("___________NB classifier with word2vec embedding______________", display_current_time())
     # naive_bayes_classification(w2v_train, w2v_test, feature_col='word2vec')
 
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     # logistic_regression_classification(w2v_train, w2v_test, feature_col='word2vec')
 
     print("____________ cross validation ____________", display_current_time())
-    cross_validation(data_df)
+    # cross_validation(data_df)
     print("end time:", display_current_time())
     spark.stop()
 
