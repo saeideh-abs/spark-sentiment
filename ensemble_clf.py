@@ -312,7 +312,7 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=11
+                                      seed=42
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
