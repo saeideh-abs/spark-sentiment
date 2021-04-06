@@ -9,8 +9,8 @@ from pyspark.sql.functions import concat_ws, udf, regexp_replace, when
 from functools import reduce
 from pyspark.sql import DataFrame
 from pyspark.sql.types import ArrayType, StringType, DoubleType
-from pyspark.ml.feature import Word2Vec
-from pyspark.ml.classification import RandomForestClassifier, LogisticRegression
+from pyspark.ml.feature import Word2Vec, HashingTF, IDF
+from pyspark.ml.classification import RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
 
@@ -93,7 +93,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
     return balance_df
 
 
@@ -143,11 +143,27 @@ def tokenization(docs):
 
 
 def build_word2vec(train_df, test_df):
+    print("entered in build_word2vec fun", display_current_time())
     word2vec = Word2Vec(vectorSize=300, minCount=5, inputCol='tokens', outputCol='word2vec')
     model = word2vec.fit(train_df)
     train_vec = model.transform(train_df)
     test_vec = model.transform(test_df)
     return train_vec, test_vec
+
+
+def build_tfidf(train_df, test_df):
+    print("entered in build_tfidf fun", display_current_time())
+    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
+    train_featurizedData = hashingTF.transform(train_df)
+    test_featurizedData = hashingTF.transform(test_df)
+
+    # featurizedData.select('rawFeatures').show(1, truncate=False)
+
+    idf = IDF(inputCol="hashedTf", outputCol="hashedTfIdf")
+    idfModel = idf.fit(train_featurizedData)
+    train_rescaledData = idfModel.transform(train_featurizedData)
+    test_rescaledData = idfModel.transform(test_featurizedData)
+    return train_rescaledData, test_rescaledData
 
 
 def lexicon_based(df):
@@ -180,7 +196,24 @@ def logistic_regression_classification(train_df, test_df, feature_col):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("LGR Test set accuracy = " + str(accuracy), display_current_time())
-    binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
+    # binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
+    return result_df
+
+
+def naive_bayes_classification(train_df, test_df, feature_col):
+    print("entered in naive bayes clf", display_current_time())
+    nb = NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol="accept", featuresCol=feature_col,
+                    predictionCol='nb_prediction')
+    model = nb.fit(train_df)
+    result_df = model.transform(test_df)
+    result_df = result_df.withColumnRenamed('rawPrediction', 'nbRawPrediction')\
+        .withColumnRenamed('probability', 'nbProbability')
+
+    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="nb_prediction",
+                                                  metricName="accuracy")
+    accuracy = evaluator.evaluate(result_df)
+    print("NB Test set accuracy = " + str(accuracy), display_current_time())
+    # binary_confusion_matrix(result_df, 'accept', 'nb_prediction')
     return result_df
 
 
@@ -198,28 +231,28 @@ def random_forest_classification(train_df, test_df, feature_col):
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
     print("RF Test set accuracy = " + str(accuracy))
-    binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
+    # binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
     return result_df
 
 
 @udf(returnType=DoubleType())
-def ensemble_predict_udf(lexicon_label, lgr_label, rf_label, lgrProbability, rfProbability):
-    if lgr_label == lexicon_label and lgr_label == rf_label:
-        label = lgr_label
+def ensemble_predict_udf(lexicon_label, ml1_label, ml2_label, ml1Probability, ml2Probability):
+    if ml1_label == lexicon_label and ml1_label == ml2_label:
+        label = ml1_label
     else:
-        rf_label_prob = max(rfProbability)
-        lgr_label_prob = max(lgrProbability)
-        if rf_label_prob > lgr_label_prob:
-            label = rf_label
+        ml2_label_prob = max(ml2Probability)
+        ml1_label_prob = max(ml1Probability)
+        if ml2_label_prob > ml1_label_prob:
+            label = ml2_label
         else:
-            label = lgr_label
+            label = ml1_label
     return label
 
 
 def soft_voting(df):
     print("entered in soft voting ", display_current_time())
     result_df = df.withColumn('ensemble_prediction', ensemble_predict_udf(
-        'lexicon_prediction', 'lgr_prediction', 'rf_prediction', 'lgrProbability', 'rfProbability'))
+        'lexicon_prediction', 'nb_prediction', 'rf_prediction', 'nbProbability', 'rfProbability'))
 
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="ensemble_prediction",
                                                   metricName="accuracy")
@@ -278,9 +311,12 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    w2v_train, w2v_test = build_word2vec(train, test)
+    tfidf_train, tfidf_test = build_tfidf(train, test)
+    w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
+
     result_df = lexicon_based(w2v_test)
-    result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
+    # result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
+    result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
     result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
     result_df = soft_voting(result_df)
     # result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
