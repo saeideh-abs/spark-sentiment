@@ -63,8 +63,8 @@ def digikala_crawled_cleaning(df):
     # df = model.transform(df)
     # # or
     df = df.withColumn('accept', when(df.recommendation == 'opinion-positive', 1.0)
-                       .when(df.recommendation == 'opinion-negative', 2.0)
-                       .when(df.recommendation == 'opinion-noidea', 0.0))
+                       .when(df.recommendation == 'opinion-negative', 0.0)
+                       .when(df.recommendation == 'opinion-noidea', 2.0))
 
     # print(df.select('accept', 'recommendation').show(50, truncate=False))
     return df

@@ -80,9 +80,9 @@ def text_polarity(text, advantages, disadvantages, window=2):
     if score >= 1:  # positive
         label = 1.0
     elif score == 0:  # neutral
-        label = 0.0
+        label = 2.0
     else:
-        label = 2.0  # negative
+        label = 0.0  # negative
     # print(part_of_speech, score, label)
     return label
 
