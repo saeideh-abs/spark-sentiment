@@ -162,16 +162,16 @@ def predict_polarities(df):
 def binary_confusion_matrix(df, target_col, prediction_col):
     print("binary confusion matrix", display_current_time())
     tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
-    tn = df[(df[target_col] == -1) & (df[prediction_col] == -1)].count()
-    fp = df[(df[target_col] == -1) & (df[prediction_col] == 1)].count()
-    fn = df[(df[target_col] == 1) & (df[prediction_col] == -1)].count()
+    tn = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
+    fp = df[(df[target_col] == 0) & (df[prediction_col] == 1)].count()
+    fn = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
 
     print("tp    tn    fp    fn", display_current_time())
     print(tp, tn, fp, fn)
 
-    tnu = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
-    fnup = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
-    fnun = df[(df[target_col] == -1) & (df[prediction_col] == 0)].count()
+    tnu = df[(df[target_col] == 2) & (df[prediction_col] == 2)].count()
+    fnup = df[(df[target_col] == 1) & (df[prediction_col] == 2)].count()
+    fnun = df[(df[target_col] == 0) & (df[prediction_col] == 2)].count()
 
     print("tnu       fnup       fnun")
     print(tnu, fnup, fnun)

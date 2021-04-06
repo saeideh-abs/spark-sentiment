@@ -259,7 +259,7 @@ def soft_voting(df):
     evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="ensemble_prediction",
                                                   metricName="accuracy")
     accuracy = evaluator.evaluate(result_df)
-    print("ensemble clf Test set accuracy = " + str(accuracy))
+    print("ensemble clf Test set accuracy = " + str(accuracy), display_current_time())
     binary_confusion_matrix(result_df, 'accept', 'ensemble_prediction')
     return result_df
 
@@ -267,16 +267,16 @@ def soft_voting(df):
 def binary_confusion_matrix(df, target_col, prediction_col):
     print("binary confusion matrix", display_current_time())
     tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
-    tn = df[(df[target_col] == 2) & (df[prediction_col] == 2)].count()
-    fp = df[(df[target_col] == 2) & (df[prediction_col] == 1)].count()
-    fn = df[(df[target_col] == 1) & (df[prediction_col] == 2)].count()
+    tn = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
+    fp = df[(df[target_col] == 0) & (df[prediction_col] == 1)].count()
+    fn = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
 
     print("tp    tn    fp    fn", display_current_time())
     print(tp, tn, fp, fn)
 
-    tnu = df[(df[target_col] == 0) & (df[prediction_col] == 0)].count()
-    fnup = df[(df[target_col] == 1) & (df[prediction_col] == 0)].count()
-    fnun = df[(df[target_col] == 2) & (df[prediction_col] == 0)].count()
+    tnu = df[(df[target_col] == 2) & (df[prediction_col] == 2)].count()
+    fnup = df[(df[target_col] == 1) & (df[prediction_col] == 2)].count()
+    fnun = df[(df[target_col] == 0) & (df[prediction_col] == 2)].count()
 
     print("tnu       fnup       fnun")
     print(tnu, fnup, fnun)
@@ -312,7 +312,7 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=42
+                                      seed=11
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
