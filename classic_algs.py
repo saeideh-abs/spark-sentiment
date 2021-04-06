@@ -5,7 +5,7 @@ from pyspark.context import SparkConf, SparkContext
 from functools import reduce
 from pyspark.sql import DataFrame
 from hazm import *
-from pyspark.sql.functions import udf, split, concat_ws
+from pyspark.sql.functions import udf, split, concat_ws, when
 from pyspark.sql import SparkSession
 # from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, ArrayType, StringType
@@ -80,6 +80,11 @@ def digikala_crawled_cleaning(df):
     stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     model = stringIndexer.fit(df)
     df = model.transform(df)
+    # # or
+    # df = df.withColumn('accept', when(df.recommendation == 'opinion-positive', 1.0)
+    #                    .when(df.recommendation == 'opinion-negative', 2.0)
+    #                    .when(df.recommendation == 'opinion-noidea', 0.0)
+    #                    )
     return df
 
 
@@ -298,8 +303,12 @@ if __name__ == '__main__':
     print("data was loaded from hdfs", display_current_time())
     # data_df = data_df.limit(2300000)
 
+    print(spark_context.defaultParallelism)
+    data_df = data_df.repartition(spark_context.defaultParallelism)
+    print("number of partitions:", data_df.rdd.getNumPartitions())
     data_df = digikala_crawled_cleaning(data_df)
-
+    data_df = data_df.repartition(spark_context.defaultParallelism)
+    print("number of partitions:", data_df.rdd.getNumPartitions())
     get_info(data_df)
 
     # ____________________ preprocessing and embedding _____________________
