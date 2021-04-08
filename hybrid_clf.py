@@ -264,12 +264,11 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, hybrid clf")
+    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, hybrid clf")
     spark_context = SparkContext(conf=conf)
-    spark_context.addPyFile("/home/mohammad/saeideh/spark-test/polarity_determination.py")
     # spark_context.addPyFile("/home/mohammad/saeideh/spark-test/polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("spark://mastr:7077") \
+    spark = SparkSession(spark_context).builder.master("local[*]") \
         .appName("digikala comments sentiment, hybrid clf") \
         .getOrCreate()
     print("****************************************")
@@ -278,7 +277,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    data_df = data_df.limit(10000)
+    # data_df = data_df.limit(10000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
     data_df = data_df.repartition(spark_context.defaultParallelism)
@@ -297,23 +296,25 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    # tfidf_train, tfidf_test = build_tfidf(train, test)
-    w2v_train, w2v_test = build_word2vec(train, test)
-    lexicon_train_features = lexicon_based(w2v_train)
-    lexicon_test_features = lexicon_based(w2v_test)
+    tfidf_train, tfidf_test = build_tfidf(train, test)
+    # w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
 
-    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    lexicon_train_features = lexicon_based(tfidf_train)
+    lexicon_test_features = lexicon_based(tfidf_test)
+
+    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
+    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
 
     # alone classifiers:
     # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
-    result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
+    # result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
+    result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
     # hybrid classifiers:
     # result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
-    result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
+    # result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
+    result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
 
-    # result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
     # print("number of partitions: ", data_df.rdd.getNumPartitions())
     # result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
     print("end time:", display_current_time())
