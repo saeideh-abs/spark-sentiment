@@ -290,7 +290,7 @@ if __name__ == '__main__':
     spark_context = SparkContext(conf=conf)
 
     spark = SparkSession(spark_context).builder.master("local[*]") \
-        .appName("digikala comments sentiment, lexicon based") \
+        .appName("digikala comments sentiment, ensemble clf") \
         .getOrCreate()
     print("****************************************")
 
