@@ -178,7 +178,7 @@ def build_tfidf(train_df, test_df):
 def lexicon_based(df):
     print("entered in lexicon based method", display_current_time())
 
-    text_polarity_udf = udf(polde.text_polarity, DoubleType())
+    text_polarity_udf = udf(polde.find_label, DoubleType())
     result_df = df.withColumn('lexicon_prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
     print("lexicon based polarity ditection was finished", display_current_time())
 

@@ -137,7 +137,7 @@ def text_cleaner(df):
 def predict_polarities(df):
     print("entered in lexicon based method", display_current_time())
 
-    text_polarity_udf = udf(polde.text_polarity, DoubleType())
+    text_polarity_udf = udf(polde.find_labe, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
     # result_df.select('accept', 'prediction').show(50, truncate=False)
     print("lexicon based polarity ditection was finished", display_current_time())

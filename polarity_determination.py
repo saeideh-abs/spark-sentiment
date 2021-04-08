@@ -34,17 +34,31 @@ positive_words, negative_words = load_lexicons()
 pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
 
 
-def text_polarity(text, advantages, disadvantages, window=2):
+def find_label(text, advantages, disadvantages, window=2):
+    pos_score, neg_score = text_polarity(text, window)
+    advantages = ast.literal_eval(advantages)
+    disadvantages = ast.literal_eval(disadvantages)
+    advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
+
+    final_score = pos_score + neg_score + advan_score + disadvan_score
+
+    if final_score >= 1:  # positive
+        label = 1.0
+    elif final_score == 0:  # neutral
+        label = 2.0
+    else:
+        label = 0.0  # negative
+    return label
+
+
+def text_polarity(text, window=2):
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     bigrams = ngrams(words, 2)
     trigrams = ngrams(words, 3)
     part_of_speech = pos_model.tag(words)
-    score = 0
+    pos_score = 0
+    neg_score = 0
 
-    advantages = ast.literal_eval(advantages)
-    disadvantages = ast.literal_eval(disadvantages)
-    advan_score = calc_advan_disadvan_score(advantages, disadvantages)
-    
     # check unigrams
     for index, word in enumerate(words):
         if part_of_speech[index][1] == 'V':  # find negative verbs
@@ -53,38 +67,28 @@ def text_polarity(text, advantages, disadvantages, window=2):
                 for i in range(window):
                     if index - i - 1 >= 0:
                         if words[index - i - 1] in positive_words:
-                            score += -2
+                            neg_score += -2
                         elif words[index - i - 1] in negative_words:
-                            score += 2
+                            pos_score += 2
         if word in positive_words:
-            score += 1
+            pos_score += 1
         if word in negative_words:
-            score += -1
+            neg_score += -1
     # check bigrams
     for grams in bigrams:
         bigram = ' '.join(grams)
         if bigram in positive_words:
-            score += 1
+            pos_score += 1
         if bigram in negative_words:
-            score += -1
+            neg_score += -1
     # check trigrams
     for grams in trigrams:
         trigram = ' '.join(grams)
         if trigram in positive_words:
-            score += 1
+            pos_score += 1
         if trigram in negative_words:
-            score += -1
-
-    score = score + advan_score
-
-    if score >= 1:  # positive
-        label = 1.0
-    elif score == 0:  # neutral
-        label = 2.0
-    else:
-        label = 0.0  # negative
-    # print(part_of_speech, score, label)
-    return label
+            neg_score += -1
+    return pos_score, neg_score
 
 
 def calc_advan_disadvan_score(advantages, disadvantages):
@@ -102,9 +106,8 @@ def calc_advan_disadvan_score(advantages, disadvantages):
             disadvan_score += 1
         else:
             disadvan_score += -1
-    final_score = advan_score + disadvan_score
-    return final_score
 
+    return advan_score, disadvan_score
 
 
 # # reading lexicons using spark
