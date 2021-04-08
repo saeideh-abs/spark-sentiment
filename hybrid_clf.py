@@ -303,11 +303,13 @@ if __name__ == '__main__':
     train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
     test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
-    # lgr alone:
-    result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
+    # alone classifiers:
+    # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
+    result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
 
-    # hybrid:
-    result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
+    # hybrid classifiers:
+    # result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
+    result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
 
     # result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
     # print("number of partitions: ", data_df.rdd.getNumPartitions())
