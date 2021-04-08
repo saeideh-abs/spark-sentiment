@@ -5,10 +5,10 @@ import ast
 from hazm import *
 from pyspark.context import SparkConf, SparkContext
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat_ws, udf, regexp_replace, when
+from pyspark.sql.functions import concat_ws, udf, when
 from functools import reduce
 from pyspark.sql import DataFrame
-from pyspark.sql.types import ArrayType, StringType, DoubleType
+from pyspark.sql.types import ArrayType, StringType, IntegerType
 from pyspark.ml.feature import Word2Vec, HashingTF, IDF
 from pyspark.ml.classification import RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
@@ -153,10 +153,11 @@ def build_word2vec(train_df, test_df):
 
 
 def append_to_dense_vector(df, dense_vec_col, list_col):
-    concat = udf(lambda v, e: Vectors.dense(list(v) + [e]), VectorUDT())
+    print("entered in append_to_dense_vector func", display_current_time())
+    concat = udf(lambda v, e: Vectors.dense(list(v) + e), VectorUDT())
 
     merged_df = df.withColumn('merged_features', concat(df[dense_vec_col], df[list_col]))
-    merged_df.select('merged_features', 'lexicon_prediction').show(truncate=False)
+    # merged_df.select('merged_features', 'lexicon_features').show(truncate=False)
     return merged_df
 
 
@@ -178,14 +179,9 @@ def build_tfidf(train_df, test_df):
 def lexicon_based(df):
     print("entered in lexicon based method", display_current_time())
 
-    text_polarity_udf = udf(polde.find_label, DoubleType())
-    result_df = df.withColumn('lexicon_prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
-    print("lexicon based polarity ditection was finished", display_current_time())
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lexicon_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("lexicon based method accuracy = " + str(accuracy), display_current_time())
+    text_polarity_udf = udf(polde.extract_features, ArrayType(IntegerType()))
+    result_df = df.withColumn('lexicon_features', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
+    print("lexicon based feature extraction was finished", display_current_time())
     return result_df
 
 
@@ -280,7 +276,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    data_df = data_df.limit(10000)
+    # data_df = data_df.limit(10000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
     data_df = data_df.repartition(spark_context.defaultParallelism)
@@ -301,10 +297,18 @@ if __name__ == '__main__':
     # ____________________ classification part _____________________
     # tfidf_train, tfidf_test = build_tfidf(train, test)
     w2v_train, w2v_test = build_word2vec(train, test)
-    result_df = lexicon_based(w2v_test)
-    append_to_dense_vector(result_df, dense_vec_col='word2vec', list_col='lexicon_prediction')
+    lexicon_train_features = lexicon_based(w2v_train)
+    lexicon_test_features = lexicon_based(w2v_test)
 
-    # # result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
+    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+
+    # lgr alone:
+    result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
+
+    # hybrid:
+    result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
+
     # result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
     # print("number of partitions: ", data_df.rdd.getNumPartitions())
     # result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
