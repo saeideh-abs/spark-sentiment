@@ -264,11 +264,13 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, lexicon based")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, hybrid clf")
     spark_context = SparkContext(conf=conf)
+    spark_context.addPyFile("/home/mohammad/saeideh/spark-test/polarity_determination.py")
+    # spark_context.addPyFile("/home/mohammad/saeideh/spark-test/polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("local[*]") \
-        .appName("digikala comments sentiment, lexicon based") \
+    spark = SparkSession(spark_context).builder.master("spark://mastr:7077") \
+        .appName("digikala comments sentiment, hybrid clf") \
         .getOrCreate()
     print("****************************************")
 
@@ -276,7 +278,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    # data_df = data_df.limit(10000)
+    data_df = data_df.limit(10000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
     data_df = data_df.repartition(spark_context.defaultParallelism)
