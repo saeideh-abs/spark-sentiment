@@ -51,6 +51,15 @@ def find_label(text, advantages, disadvantages, window=2):
     return label
 
 
+def extract_features(text, advantages, disadvantages, window=2):
+    pos_score, neg_score = text_polarity(text, window)
+    advantages = ast.literal_eval(advantages)
+    disadvantages = ast.literal_eval(disadvantages)
+    advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
+    features = [pos_score, neg_score, advan_score, disadvan_score]
+    return features
+
+
 def text_polarity(text, window=2):
     words = word_tokenize(text)  # use Hazm tokenizer to get tokens
     bigrams = ngrams(words, 2)
