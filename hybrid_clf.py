@@ -266,7 +266,7 @@ if __name__ == '__main__':
     # _______________________ spark configs _________________________
     conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, hybrid clf")
     spark_context = SparkContext(conf=conf)
-    # spark_context.addPyFile("/home/mohammad/saeideh/spark-test/polarity_determination.py")
+    spark_context.addPyFile("./polarity_determination.py")
 
     spark = SparkSession(spark_context).builder.master("local[*]") \
         .appName("digikala comments sentiment, hybrid clf") \
@@ -304,6 +304,9 @@ if __name__ == '__main__':
 
     train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
+    # # or
+    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
     # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
