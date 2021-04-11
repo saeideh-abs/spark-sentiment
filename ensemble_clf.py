@@ -288,6 +288,7 @@ if __name__ == '__main__':
     # _______________________ spark configs _________________________
     conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, lexicon based")
     spark_context = SparkContext(conf=conf)
+    spark_context.addPyFile("./polarity_determination.py")
 
     spark = SparkSession(spark_context).builder.master("local[*]") \
         .appName("digikala comments sentiment, ensemble clf") \
