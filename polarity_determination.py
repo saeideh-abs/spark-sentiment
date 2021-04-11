@@ -8,20 +8,21 @@ from nltk import ngrams
 
 
 def load_lexicons():
-    dataheart_lexicon_pos = open('./resources/dataheart_lexicon/positive_words.txt').read().split('\n')
-    dataheart_lexicon_neg = open('./resources/dataheart_lexicon/negative_words.txt').read().split('\n')
+    root = '/home/mohammad/saeideh/spark-test/'
+    dataheart_lexicon_pos = open(root + 'resources/dataheart_lexicon/positive_words.txt').read().split('\n')
+    dataheart_lexicon_neg = open(root + 'resources/dataheart_lexicon/negative_words.txt').read().split('\n')
 
-    textmining_lexicon_pos = open('./resources/text_mining_lexicon/positive.txt').read().split('\n')
-    textmining_lexicon_neg = open('./resources/text_mining_lexicon/negative.txt').read().split('\n')
+    textmining_lexicon_pos = open(root + 'resources/text_mining_lexicon/positive.txt').read().split('\n')
+    textmining_lexicon_neg = open(root + 'resources/text_mining_lexicon/negative.txt').read().split('\n')
 
-    infogain_snapfood_pos = open('./resources/infogain_snapfood/positive.txt').read().split('\n')
-    infogain_snapfood_neg = open('./resources/infogain_snapfood/negative.txt').read().split('\n')
+    infogain_snapfood_pos = open(root + 'resources/infogain_snapfood/positive.txt').read().split('\n')
+    infogain_snapfood_neg = open(root + 'resources/infogain_snapfood/negative.txt').read().split('\n')
 
-    infogain_digikala_pos = open('./resources/infogain_digikala/positive_words.txt').read().split('\n')
-    infogain_digikala_neg = open('./resources/infogain_digikala/negative_words.txt').read().split('\n')
+    infogain_digikala_pos = open(root + 'resources/infogain_digikala/positive_words.txt').read().split('\n')
+    infogain_digikala_neg = open(root + 'resources/infogain_digikala/negative_words.txt').read().split('\n')
 
-    sentifars_lexicon_pos = open('./resources/SentiFars_lexicon/positive.txt').read().split('\n')
-    sentifars_lexicon_neg = open('./resources/SentiFars_lexicon/negative.txt').read().split('\n')
+    sentifars_lexicon_pos = open(root + 'resources/SentiFars_lexicon/positive.txt').read().split('\n')
+    sentifars_lexicon_neg = open(root + 'resources/SentiFars_lexicon/negative.txt').read().split('\n')
 
     pos_words = dataheart_lexicon_pos + textmining_lexicon_pos\
                 + infogain_snapfood_pos + infogain_digikala_pos + sentifars_lexicon_pos
@@ -31,7 +32,7 @@ def load_lexicons():
 
 
 positive_words, negative_words = load_lexicons()
-pos_model = POSTagger(model='./resources/hazm_resources/postagger.model')
+pos_model = POSTagger(model='/home/mohammad/saeideh/spark-test/resources/hazm_resources/postagger.model')
 
 
 def find_label(text, advantages, disadvantages, window=2):
@@ -130,3 +131,19 @@ def calc_advan_disadvan_score(advantages, disadvantages):
 # pos_words = reduce(DataFrame.unionAll, [dataheart_lexicon_pos, textmining_lexicon_pos, infogain_lexicon_pos])
 # neg_words = reduce(DataFrame.unionAll, [dataheart_lexicon_neg, textmining_lexicon_neg, infogain_lexicon_neg])
 # neg_words.printSchema()
+
+# # add lexicons using spark context addFile
+# sc = SparkContext.getOrCreate()
+#
+#
+# # def load_lexicons():
+# sc.addFile("./resources/dataheart_lexicon/positive_words.txt")
+# sc.addFile('./resources/dataheart_lexicon/negative_words.txt')
+# sc.addFile("./resources/text_mining_lexicon/positive.txt")
+# sc.addFile('./resources/text_mining_lexicon/negative.txt')
+#
+# dh_pos_adrs = SparkFiles.getRootDirectory()
+# print("+++++++++++++++++++++++++++++ address: ", dh_pos_adrs)
+# dh_neg_adrs = SparkFiles.get('negative_words.txt')
+# tm_pos_adrs = SparkFiles.get('positive.txt')
+# tm_neg_adrs = SparkFiles.get('negative.txt')

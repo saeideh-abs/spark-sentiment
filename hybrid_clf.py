@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
-import polarity_determination as polde
 import time
 import ast
 from hazm import *
-from pyspark.context import SparkConf, SparkContext
+from pyspark.context import SparkConf, SparkContext, SparkFiles
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import concat_ws, udf, when
 from functools import reduce
@@ -13,6 +12,7 @@ from pyspark.ml.feature import Word2Vec, HashingTF, IDF
 from pyspark.ml.classification import RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.linalg import Vectors, VectorUDT
+import polarity_determination as polde
 
 
 def display_current_time():
@@ -264,11 +264,11 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, hybrid clf")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, hybrid clf")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("local[*]") \
+    spark = SparkSession(spark_context).builder.master("spark://master:7077") \
         .appName("digikala comments sentiment, hybrid clf") \
         .getOrCreate()
     print("****************************************")
@@ -305,8 +305,8 @@ if __name__ == '__main__':
     train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     # # or
-    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
     # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
