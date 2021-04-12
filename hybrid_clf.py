@@ -277,7 +277,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    # data_df = data_df.limit(10000)
+    # data_df = data_df.limit(500000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
     data_df = data_df.repartition(spark_context.defaultParallelism)
@@ -297,10 +297,12 @@ if __name__ == '__main__':
 
     # ____________________ classification part _____________________
     tfidf_train, tfidf_test = build_tfidf(train, test)
-    # w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
+    # w2v_train, w2v_test = build_word2vec(train, test)
 
     lexicon_train_features = lexicon_based(tfidf_train)
     lexicon_test_features = lexicon_based(tfidf_test)
+    # lexicon_train_features = lexicon_based(w2v_train)
+    # lexicon_test_features = lexicon_based(w2v_test)
 
     train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
@@ -309,16 +311,17 @@ if __name__ == '__main__':
     # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
-    # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
+    result_df = logistic_regression_classification(train_df, test_df, feature_col='hashedTfIdf')
     # result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
-    result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
+    # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
+
+    print("number of partitions: ", data_df.rdd.getNumPartitions())
 
     # hybrid classifiers:
-    # result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
+    result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
     # result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
-    result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
+    # result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
 
-    # print("number of partitions: ", data_df.rdd.getNumPartitions())
     # result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
     print("end time:", display_current_time())
     spark.stop()

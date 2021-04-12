@@ -57,7 +57,10 @@ def extract_features(text, advantages, disadvantages, window=2):
     advantages = ast.literal_eval(advantages)
     disadvantages = ast.literal_eval(disadvantages)
     advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
-    features = [pos_score, neg_score*(-1), advan_score, disadvan_score*(-1)]
+    features = [
+                pos_score, neg_score*(-1),
+                advan_score, disadvan_score*(-1)
+                ]
     return features
 
 
