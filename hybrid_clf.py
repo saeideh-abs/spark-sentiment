@@ -296,22 +296,22 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    tfidf_train, tfidf_test = build_tfidf(train, test)
-    # w2v_train, w2v_test = build_word2vec(train, test)
+    # tfidf_train, tfidf_test = build_tfidf(train, test)
+    w2v_train, w2v_test = build_word2vec(train, test)
 
-    lexicon_train_features = lexicon_based(tfidf_train)
-    lexicon_test_features = lexicon_based(tfidf_test)
-    # lexicon_train_features = lexicon_based(w2v_train)
-    # lexicon_test_features = lexicon_based(w2v_test)
+    # lexicon_train_features = lexicon_based(tfidf_train)
+    # lexicon_test_features = lexicon_based(tfidf_test)
+    lexicon_train_features = lexicon_based(w2v_train)
+    lexicon_test_features = lexicon_based(w2v_test)
 
-    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
-    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
+    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
+    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     # # or
-    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
-    result_df = logistic_regression_classification(train_df, test_df, feature_col='hashedTfIdf')
+    result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
     # result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
@@ -322,6 +322,5 @@ if __name__ == '__main__':
     # result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
 
-    # result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
     print("end time:", display_current_time())
     spark.stop()
