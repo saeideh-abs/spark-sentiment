@@ -137,7 +137,7 @@ def text_cleaner(df):
 def predict_polarities(df):
     print("entered in lexicon based method", display_current_time())
 
-    text_polarity_udf = udf(polde.find_labe, DoubleType())
+    text_polarity_udf = udf(polde.find_label, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
     # result_df.select('accept', 'prediction').show(50, truncate=False)
     print("lexicon based polarity ditection was finished", display_current_time())
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     # _______________________ loading dataset _________________________
     # data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
     # data_df = data_df.limit(100000)
-    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
     data_df = digikala_crawled_cleaning(data_df)

@@ -18,8 +18,8 @@ def load_lexicons():
     infogain_snapfood_pos = open(root + 'resources/infogain_snapfood/positive.txt').read().split('\n')
     infogain_snapfood_neg = open(root + 'resources/infogain_snapfood/negative.txt').read().split('\n')
 
-    infogain_digikala_pos = open(root + 'resources/infogain_digikala/positive_words.txt').read().split('\n')
-    infogain_digikala_neg = open(root + 'resources/infogain_digikala/negative_words.txt').read().split('\n')
+    infogain_digikala_pos = open(root + 'resources/infogain_digikala/positive_few.txt').read().split('\n')
+    infogain_digikala_neg = open(root + 'resources/infogain_digikala/negative_few.txt').read().split('\n')
 
     sentifars_lexicon_pos = open(root + 'resources/SentiFars_lexicon/positive.txt').read().split('\n')
     sentifars_lexicon_neg = open(root + 'resources/SentiFars_lexicon/negative.txt').read().split('\n')
