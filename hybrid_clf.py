@@ -4,11 +4,11 @@ import ast
 from hazm import *
 from pyspark.context import SparkConf, SparkContext, SparkFiles
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat_ws, udf, when
+from pyspark.sql.functions import concat_ws, udf, when, concat
 from functools import reduce
 from pyspark.sql import DataFrame
 from pyspark.sql.types import ArrayType, StringType, IntegerType
-from pyspark.ml.feature import Word2Vec, HashingTF, IDF
+from pyspark.ml.feature import Word2Vec, HashingTF, IDF, VectorAssembler
 from pyspark.ml.classification import RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.linalg import Vectors, VectorUDT
@@ -163,7 +163,7 @@ def append_to_dense_vector(df, dense_vec_col, list_col):
 
 def build_tfidf(train_df, test_df):
     print("entered in build_tfidf fun", display_current_time())
-    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
+    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=50000)
     train_featurizedData = hashingTF.transform(train_df)
     test_featurizedData = hashingTF.transform(test_df)
 
@@ -296,22 +296,35 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    # tfidf_train, tfidf_test = build_tfidf(train, test)
-    w2v_train, w2v_test = build_word2vec(train, test)
+    tfidf_train, tfidf_test = build_tfidf(train, test)
+    # w2v_train, w2v_test = build_word2vec(train, test)
 
-    # lexicon_train_features = lexicon_based(tfidf_train)
-    # lexicon_test_features = lexicon_based(tfidf_test)
-    lexicon_train_features = lexicon_based(w2v_train)
-    lexicon_test_features = lexicon_based(w2v_test)
+    lexicon_train_features = lexicon_based(tfidf_train)
+    lexicon_test_features = lexicon_based(tfidf_test)
+    # lexicon_train_features = lexicon_based(w2v_train)
+    # lexicon_test_features = lexicon_based(w2v_test)
+
+
 
     # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
     # # or
-    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+
+    # train_df = lexicon_train_features.withColumn(
+    #     'merged_features', concat(lexicon_train_features['hashedTfIdf'], lexicon_train_features['lexicon_features']))
+    # test_df = lexicon_test_features.withColumn(
+    #     concat('merged_features', lexicon_test_features['hashedTfIdf'], lexicon_test_features['lexicon_features']))
+
+    train_df = VectorAssembler(inputCols=['hashedTfIdf', 'lexicon_features'], outputCol='merged_features')
+    train_df = train_df.transform(lexicon_train_features)
+
+    test_df = VectorAssembler(inputCols=['hashedTfIdf', 'lexicon_features'], outputCol='merged_features')
+    test_df = test_df.transform(lexicon_test_features)
 
     # alone classifiers:
-    result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
+    result_df = logistic_regression_classification(train_df, test_df, feature_col='hashedTfIdf')
     # result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
