@@ -2,12 +2,14 @@ from __future__ import unicode_literals
 import time
 import glob
 from pyspark.context import SparkConf, SparkContext
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+# import org.apache.spark.sql.expressions.Window
 from functools import reduce
 from pyspark.sql import DataFrame
 from hazm import *
 from pyspark.sql.functions import udf, split, concat_ws, when
 from pyspark.sql import SparkSession
-# from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, ArrayType, StringType
 from pyspark.sql.functions import regexp_replace
 from pyspark.ml import Pipeline
@@ -35,6 +37,17 @@ def read_spark_df():
     df_complete = reduce(DataFrame.unionAll, frames)  # to merge(concatenate) multiple dfs
     df_complete.repartition(1).write.csv("digikalaCrawledData.csv", header=True)
     return df_complete
+
+
+def split_df(df, num):
+    windSpec = Window.partitionBy(F.lit(0)).orderBy(F.monotonically_increasing_id())
+    df = df.withColumn("row_num", F.row_number().over(windSpec))
+    info_df = df.filter(df.row_num <= num)
+    data_df = df.filter(df.row_num > num)
+
+    info_df.repartition(1).write.csv("hdfs://master:9000/user/saeideh/infogain_digikala_dataset.csv", header=True)
+    data_df.repartition(1).write.csv("hdfs://master:9000/user/saeideh/digikala_dataset.csv", header=True)
+    print("finished split_df")
 
 
 def miras_cleaning(df):
@@ -299,8 +312,14 @@ if __name__ == '__main__':
     # data_df = miras_cleaning(data_df)
 
     # data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
-    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
+
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
+    ig_df = spark.read.csv('hdfs://master:9000/user/saeideh/infogain_digikala_dataset.csv', inferSchema=True, header=True)
+    # split_df(data_df, 80000) # split 80000 of first samples and return 2 new dataframes
+
     print("data was loaded from hdfs", display_current_time())
+    digikala_crawled_cleaning(ig_df)
+
     # data_df = data_df.limit(2300000)
 
     print(spark_context.defaultParallelism)
