@@ -8,7 +8,9 @@ from nltk import ngrams
 
 
 def load_lexicons():
-    root = '/home/mohammad/saeideh/spark-test/'
+    # root = '/home/mohammad/saeideh/spark-test/'
+    root = './'
+
     dataheart_lexicon_pos = open(root + 'resources/dataheart_lexicon/positive_words.txt').read().split('\n')
     dataheart_lexicon_neg = open(root + 'resources/dataheart_lexicon/negative_words.txt').read().split('\n')
 

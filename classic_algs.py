@@ -314,11 +314,11 @@ if __name__ == '__main__':
     # data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
 
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
-    ig_df = spark.read.csv('hdfs://master:9000/user/saeideh/infogain_digikala_dataset.csv', inferSchema=True, header=True)
+    # ig_df = spark.read.csv('hdfs://master:9000/user/saeideh/infogain_digikala_dataset.csv',
+    #         inferSchema=True, header=True)
     # split_df(data_df, 80000) # split 80000 of first samples and return 2 new dataframes
 
     print("data was loaded from hdfs", display_current_time())
-    digikala_crawled_cleaning(ig_df)
 
     # data_df = data_df.limit(2300000)
 
