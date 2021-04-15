@@ -8,8 +8,8 @@ from nltk import ngrams
 
 
 def load_lexicons():
-    # root = '/home/mohammad/saeideh/spark-test/'
-    root = './'
+    root = '/home/mohammad/saeideh/spark-test/'
+    # root = './'
 
     dataheart_lexicon_pos = open(root + 'resources/dataheart_lexicon/positive_words.txt').read().split('\n')
     dataheart_lexicon_neg = open(root + 'resources/dataheart_lexicon/negative_words.txt').read().split('\n')
@@ -41,8 +41,8 @@ neut_label = 2.0
 
 
 def find_label(text, advantages, disadvantages, window=2):
-    pos_score, neg_score = sentences_polarity(text, window)
-    # pos_score, neg_score = text_polarity(text, window)
+    # pos_score, neg_score = sentences_polarity(text, window)
+    pos_score, neg_score = text_polarity(text, window)
     advantages = ast.literal_eval(advantages)
     disadvantages = ast.literal_eval(disadvantages)
     advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
@@ -72,7 +72,7 @@ def extract_features(text, advantages, disadvantages, window=2):
     features = [
                 pos_score, neg_score*(-1),
                 advan_score, disadvan_score*(-1),
-                pos_sent_score, neg_sent_score*(-1)
+                # pos_sent_score, neg_sent_score*(-1)
                 ]
     return features
 

@@ -2,16 +2,17 @@ from __future__ import unicode_literals
 import time
 import ast
 from hazm import *
+import numpy as np
 from pyspark.context import SparkConf, SparkContext, SparkFiles
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import concat_ws, udf, when, concat
 from functools import reduce
 from pyspark.sql import DataFrame
 from pyspark.sql.types import ArrayType, StringType, IntegerType
-from pyspark.ml.feature import Word2Vec, HashingTF, IDF, VectorAssembler
+from pyspark.ml.feature import Word2Vec, HashingTF, IDF
 from pyspark.ml.classification import RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-from pyspark.ml.linalg import Vectors, VectorUDT
+from pyspark.ml.linalg import Vectors, VectorUDT, SparseVector
 import polarity_determination as polde
 
 
@@ -161,9 +162,55 @@ def append_to_dense_vector(df, dense_vec_col, list_col):
     return merged_df
 
 
+# just get first 4 features
+def append_to_dense_vector2(df, dense_vec_col, list_col):
+    print("entered in append_to_dense_vector func", display_current_time())
+    concat = udf(lambda v, e: Vectors.dense(list(v) + e[0:4]), VectorUDT())
+
+    merged_df = df.withColumn('merged_features', concat(df[dense_vec_col], df[list_col]))
+    # merged_df.select('merged_features', 'lexicon_features').show(truncate=False)
+    return merged_df
+
+
+def append_to_sparse_vector(df, sparse_vec_col, list_col):
+    print("entered in append_to_sparse_vector func", display_current_time())
+    sparse_vector = udf(udf_sparse, VectorUDT())
+    final_udf = df.withColumn('merged_features', sparse_vector(df[sparse_vec_col], df[list_col]))
+    return final_udf
+
+
+def udf_sparse(sparse_vector, count_features):
+    sparse_vector_size = sparse_vector.size
+    sparse_vector_indices = np.append(sparse_vector.indices,
+                                      [int(i + sparse_vector_size) for i in range(1, len(count_features)+1)])
+    sparse_vector_values = np.append(sparse_vector.values, count_features)
+    new_vector = SparseVector(sparse_vector_size + len(count_features)+1, sparse_vector_indices, sparse_vector_values)
+    return new_vector
+
+
+def append_to_sparse_vector2(df, sparse_vec_col, list_col):
+    print("entered in append_to_sparse_vector func", display_current_time())
+    sparse_vector = udf(udf_sparse, VectorUDT())
+    final_udf = df.withColumn('merged_features', sparse_vector(df[sparse_vec_col], df[list_col]))
+    return final_udf
+
+
+def udf_sparse2(sparse_vector, count_features):
+    count_features = count_features[0:4]
+    sparse_vector_size = sparse_vector.size
+    sparse_vector_indices = np.append(sparse_vector.indices,
+                                      [int(i + sparse_vector_size) for i in range(1, len(count_features)+1)])
+    sparse_vector_values = np.append(sparse_vector.values, count_features)
+    new_vector = SparseVector(sparse_vector_size + len(count_features)+1, sparse_vector_indices, sparse_vector_values)
+    return new_vector
+
+
 def build_tfidf(train_df, test_df):
     print("entered in build_tfidf fun", display_current_time())
-    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=50000)
+    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf",
+                          # numFeatures=10000
+                          )
+    print("hashingTf number of features:", hashingTF.getNumFeatures())
     train_featurizedData = hashingTF.transform(train_df)
     test_featurizedData = hashingTF.transform(test_df)
 
@@ -277,7 +324,7 @@ if __name__ == '__main__':
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    # data_df = data_df.limit(500000)
+    # data_df = data_df.limit(10000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
     data_df = data_df.repartition(spark_context.defaultParallelism)
@@ -296,44 +343,38 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    # tfidf_train, tfidf_test = build_tfidf(train, test)
-    w2v_train, w2v_test = build_word2vec(train, test)
+    tfidf_train, tfidf_test = build_tfidf(train, test)
+    # w2v_train, w2v_test = build_word2vec(train, test)
 
-    # lexicon_train_features = lexicon_based(tfidf_train)
-    # lexicon_test_features = lexicon_based(tfidf_test)
-    lexicon_train_features = lexicon_based(w2v_train)
-    lexicon_test_features = lexicon_based(w2v_test)
+    lexicon_train_features = lexicon_based(tfidf_train)
+    lexicon_test_features = lexicon_based(tfidf_test)
+    # lexicon_train_features = lexicon_based(w2v_train)
+    # lexicon_test_features = lexicon_based(w2v_test)
 
-
-
-    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
-    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='hashedTfIdf', list_col='lexicon_features')
+    train_df = append_to_sparse_vector(lexicon_train_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
+    test_df = append_to_sparse_vector(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
+    train_df2 = append_to_sparse_vector2(lexicon_train_features, sparse_vec_col='hashedTfIdf',list_col='lexicon_features')
+    test_df2 = append_to_sparse_vector2(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
     # # or
-    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
-
-    # train_df = lexicon_train_features.withColumn(
-    #     'merged_features', concat(lexicon_train_features['hashedTfIdf'], lexicon_train_features['lexicon_features']))
-    # test_df = lexicon_test_features.withColumn(
-    #     concat('merged_features', lexicon_test_features['hashedTfIdf'], lexicon_test_features['lexicon_features']))
-
-    # train_df = VectorAssembler(inputCols=['hashedTfIdf', 'lexicon_features'], outputCol='merged_features')
-    # train_df = train_df.transform(lexicon_train_features)
-    #
-    # test_df = VectorAssembler(inputCols=['hashedTfIdf', 'lexicon_features'], outputCol='merged_features')
-    # test_df = test_df.transform(lexicon_test_features)
+    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # train_df2 = append_to_dense_vector2(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # test_df2 = append_to_dense_vector2(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
-    result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
+    # result_df = logistic_regression_classification(train_df, test_df, feature_col='hashedTfIdf')
     # result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
-    # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
+    result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
     print("number of partitions: ", data_df.rdd.getNumPartitions())
 
     # hybrid classifiers:
-    result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
+    # result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
     # result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
-    # result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
+    result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
+
+    # hybrid classifiers without sentence score:
+    # result_df = naive_bayes_classification(train_df2, test_df2, feature_col='merged_features')
 
     print("end time:", display_current_time())
     spark.stop()
