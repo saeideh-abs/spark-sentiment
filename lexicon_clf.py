@@ -139,6 +139,7 @@ def predict_polarities(df):
 
     text_polarity_udf = udf(polde.find_label, DoubleType())
     result_df = df.withColumn('prediction', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
+    result_df.collect()
     # result_df.select('accept', 'prediction').show(50, truncate=False)
     print("lexicon based polarity ditection was finished", display_current_time())
 
@@ -192,8 +193,8 @@ if __name__ == '__main__':
 
     # _______________________ loading dataset _________________________
     # data_df = spark.read.csv('./dataset/digikala_all.csv', inferSchema=True, header=True)
-    # data_df = data_df.limit(100000)
     data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
+    # data_df = data_df.limit(10000)
     print("data was loaded from hdfs", display_current_time())
 
     data_df = digikala_crawled_cleaning(data_df)

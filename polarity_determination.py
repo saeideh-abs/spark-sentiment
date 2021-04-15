@@ -35,33 +35,44 @@ def load_lexicons():
 
 positive_words, negative_words = load_lexicons()
 pos_model = POSTagger(model='/home/mohammad/saeideh/spark-test/resources/hazm_resources/postagger.model')
+pos_label = 1.0
+neg_label = 0.0
+neut_label = 2.0
 
 
 def find_label(text, advantages, disadvantages, window=2):
-    pos_score, neg_score = text_polarity(text, window)
+    pos_score, neg_score = sentences_polarity(text, window)
+    # pos_score, neg_score = text_polarity(text, window)
     advantages = ast.literal_eval(advantages)
     disadvantages = ast.literal_eval(disadvantages)
     advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
 
     final_score = pos_score + neg_score + advan_score + disadvan_score
+    label = tag_by_score(final_score)
 
-    if final_score >= 1:  # positive
-        label = 1.0
-    elif final_score == 0:  # neutral
-        label = 2.0
+    return label
+
+
+def tag_by_score(score):
+    if score >= 1:  # positive
+        label = pos_label
+    elif score == 0:  # neutral
+        label = neut_label
     else:
-        label = 0.0  # negative
+        label = neg_label  # negative
     return label
 
 
 def extract_features(text, advantages, disadvantages, window=2):
     pos_score, neg_score = text_polarity(text, window)
+    pos_sent_score, neg_sent_score = sentences_polarity(text, window)
     advantages = ast.literal_eval(advantages)
     disadvantages = ast.literal_eval(disadvantages)
     advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
     features = [
                 pos_score, neg_score*(-1),
-                advan_score, disadvan_score*(-1)
+                advan_score, disadvan_score*(-1),
+                pos_sent_score, neg_sent_score*(-1)
                 ]
     return features
 
@@ -104,6 +115,24 @@ def text_polarity(text, window=2):
         if trigram in negative_words:
             neg_score += -1
     return pos_score, neg_score
+
+
+def sentences_polarity(doc, window=2):
+    pos_sent_count = 0
+    neg_sent_count = 0 # (is a negative number)
+    neut_sent_count = 0
+
+    sentences = sent_tokenize(doc)
+    for sent in sentences:
+        pos_score, neg_score = text_polarity(sent)
+        sent_label = tag_by_score(pos_score + neg_score)
+        if sent_label == pos_label:
+            pos_sent_count += 1
+        elif sent_label == neg_label:
+            neg_sent_count += -1
+        else:
+            neut_sent_count += 1
+    return pos_sent_count, neg_sent_count
 
 
 def calc_advan_disadvan_score(advantages, disadvantages):
