@@ -95,7 +95,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
     return balance_df
 
 
@@ -208,7 +208,7 @@ def udf_sparse2(sparse_vector, count_features):
 def build_tfidf(train_df, test_df):
     print("entered in build_tfidf fun", display_current_time())
     hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf",
-                          # numFeatures=10000
+                          numFeatures=1000
                           )
     print("hashingTf number of features:", hashingTF.getNumFeatures())
     train_featurizedData = hashingTF.transform(train_df)
