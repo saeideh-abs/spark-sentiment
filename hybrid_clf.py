@@ -159,7 +159,6 @@ def append_to_dense_vector(df, dense_vec_col, list_col):
 
     merged_df = df.withColumn('merged_features', concat(df[dense_vec_col], df[list_col]))
     # merged_df.select('merged_features', 'lexicon_features').show(truncate=False)
-    merged_df.collect()
     return merged_df
 
 
@@ -314,17 +313,17 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, hybrid clf")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, hybrid clf")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("local[*]") \
+    spark = SparkSession(spark_context).builder.master("spark://master:7077") \
         .appName("digikala comments sentiment, hybrid clf") \
         .getOrCreate()
     print("****************************************")
 
     # _______________________ loading dataset _________________________
-    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
     # data_df = data_df.limit(10000)
