@@ -17,8 +17,8 @@ def load_lexicons():
     textmining_lexicon_pos = open(root + 'resources/text_mining_lexicon/positive.txt').read().split('\n')
     textmining_lexicon_neg = open(root + 'resources/text_mining_lexicon/negative.txt').read().split('\n')
 
-    infogain_snapfood_pos = open(root + 'resources/infogain_snapfood/positive.txt').read().split('\n')
-    infogain_snapfood_neg = open(root + 'resources/infogain_snapfood/negative.txt').read().split('\n')
+    # infogain_snapfood_pos = open(root + 'resources/infogain_snapfood/positive.txt').read().split('\n')
+    # infogain_snapfood_neg = open(root + 'resources/infogain_snapfood/negative.txt').read().split('\n')
 
     infogain_digikala_pos = open(root + 'resources/infogain_digikala/positive_few.txt').read().split('\n')
     infogain_digikala_neg = open(root + 'resources/infogain_digikala/negative_few.txt').read().split('\n')
@@ -27,9 +27,11 @@ def load_lexicons():
     sentifars_lexicon_neg = open(root + 'resources/SentiFars_lexicon/negative.txt').read().split('\n')
 
     pos_words = dataheart_lexicon_pos + textmining_lexicon_pos\
-                + infogain_snapfood_pos + infogain_digikala_pos + sentifars_lexicon_pos
+                + infogain_digikala_pos + sentifars_lexicon_pos
+                # + infogain_snapfood_pos\
     neg_words = dataheart_lexicon_neg + textmining_lexicon_neg\
-                + infogain_snapfood_neg + infogain_digikala_neg + sentifars_lexicon_neg
+                + infogain_digikala_neg + sentifars_lexicon_neg
+                # + infogain_snapfood_neg \
     return pos_words, neg_words
 
 
