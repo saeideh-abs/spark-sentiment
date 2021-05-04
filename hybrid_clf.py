@@ -101,7 +101,7 @@ def get_balance_samples(df):
 
 def get_info(df):
     print("*********** get_info func *************")
-    df.printSchema()
+    # df.printSchema()
     # df.show()
     labels = df.select('accept')
     comments = df.select('text')
@@ -140,7 +140,7 @@ def text_cleaner(df):
 
 def tokenization(docs):
     tokens = docs.withColumn('tokens', hazm_tokenizer('clean_text'))
-    tokens.printSchema()
+    # tokens.printSchema()
     return tokens
 
 
