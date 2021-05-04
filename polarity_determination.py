@@ -67,7 +67,7 @@ def tag_by_score(score):
 
 def extract_features(text, advantages, disadvantages, window=2):
     pos_score, neg_score = text_polarity(text, window)
-    pos_sent_score, neg_sent_score = sentences_polarity(text, window)
+    # pos_sent_score, neg_sent_score = sentences_polarity(text, window)
     advantages = ast.literal_eval(advantages)
     disadvantages = ast.literal_eval(disadvantages)
     advan_score, disadvan_score = calc_advan_disadvan_score(advantages, disadvantages)
