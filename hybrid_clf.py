@@ -35,7 +35,7 @@ def list2string_udf(list):
 
 def digikala_crawled_cleaning(df):
     print("total number of data:", df.count(), display_current_time())
-    # df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
+    df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
     print("number of data after removing duplicates:", df.count(), display_current_time())
 
     # df = df.withColumnRenamed('comment_body', 'text')
@@ -59,7 +59,7 @@ def digikala_crawled_cleaning(df):
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
     print("count of labled and non-empty comment_bodies:", df.count())
 
-    # df = get_balance_samples(df)
+    df = get_balance_samples(df)
 
     # stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     # model = stringIndexer.fit(df)
@@ -210,7 +210,7 @@ def udf_sparse2(sparse_vector, count_features):
 def build_tfidf(train_df, test_df):
     print("entered in build_tfidf fun", display_current_time())
     hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf",
-                          numFeatures=1000
+                          numFeatures=15000
                           )
     print("hashingTf number of features:", hashingTF.getNumFeatures())
     train_featurizedData = hashingTF.transform(train_df)
@@ -243,14 +243,9 @@ def logistic_regression_classification(train_df, test_df, feature_col):
     result_df = model.transform(test_df)
     result_df = result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction')\
         .withColumnRenamed('probability', 'lgrProbability')
-
     # result_df.printSchema()
+    evaluation(result_df, 'accept', 'lgr_prediction', "LGR")
 
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("LGR Test set accuracy = " + str(accuracy), display_current_time())
-    # binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
     return result_df
 
 
@@ -263,13 +258,9 @@ def naive_bayes_classification(train_df, test_df, feature_col):
     # result_df.printSchema()
     result_df = result_df.withColumnRenamed('rawPrediction', 'nbRawPrediction')\
         .withColumnRenamed('probability', 'nbProbability')
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="nb_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("NB Test set accuracy = " + str(accuracy), display_current_time())
     # result_df.select('accept', 'nb_prediction', 'lexicon_prediction').show(50, truncate=False)
     # binary_confusion_matrix(result_df, 'accept', 'nb_prediction')
+    evaluation(result_df, 'accept', 'nb_prediction', "NB")
     return result_df
 
 
@@ -280,14 +271,9 @@ def random_forest_classification(train_df, test_df, feature_col):
     result_df = model.transform(test_df)
     result_df = result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
         .withColumnRenamed('probability', 'rfProbability')
-
     # result_df.printSchema()
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("RF Test set accuracy = " + str(accuracy))
     # binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
+    evaluation(result_df, 'accept', 'rf_prediction', "RF")
     return result_df
 
 
@@ -309,6 +295,40 @@ def binary_confusion_matrix(df, target_col, prediction_col):
     print(tnu, fnup, fnun)
 
 
+def evaluation(df, target_col, prediction_col, classifier_name):
+    evaluator = MulticlassClassificationEvaluator(labelCol=target_col, predictionCol=prediction_col,
+                                                  metricName="accuracy", metricLabel=1.0)
+    accuracy = evaluator.evaluate(df)
+    print(classifier_name + " Test set accuracy = " + str(accuracy), display_current_time())
+    evaluator.setMetricName('f1')
+    f1 = evaluator.evaluate(df)
+    print("f1:", f1, display_current_time())
+
+    evaluator.setMetricName('weightedFMeasure')
+    Wfmeasure = evaluator.evaluate(df)
+    print("weighted f measure:", Wfmeasure, display_current_time())
+
+    evaluator.setMetricName('weightedPrecision')
+    Wprecision = evaluator.evaluate(df)
+    print("weightedPrecision:", Wprecision, display_current_time())
+
+    evaluator.setMetricName('weightedRecall')
+    Wrecall = evaluator.evaluate(df)
+    print("weightedRecall:", Wrecall, display_current_time())
+
+    evaluator.setMetricName('precisionByLabel')
+    precision2 = evaluator.evaluate(df)
+    print("PrecisionByLabel:", precision2, display_current_time())
+
+    evaluator.setMetricName('recallByLabel')
+    recall2 = evaluator.evaluate(df)
+    print("recallByLabel:", recall2, display_current_time())
+
+    evaluator.setMetricName('fMeasureByLabel')
+    fmeasure2 = evaluator.evaluate(df)
+    print("fMeasureByLabel:", fmeasure2, display_current_time())
+
+
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
@@ -323,12 +343,12 @@ if __name__ == '__main__':
     print("****************************************")
 
     # _______________________ loading dataset _________________________
-    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    # data_df = data_df.limit(10000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
+    # data_df = data_df.limit(50000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     get_info(data_df)
 
@@ -340,7 +360,7 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=42
+                                      seed=100
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
@@ -365,14 +385,14 @@ if __name__ == '__main__':
 
     # alone classifiers:
     result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
-    # result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
+    # result_df = random_forest_classification(train_df, test_df, feature_col='hashedTfIdf')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
     print("number of partitions: ", data_df.rdd.getNumPartitions())
 
     # hybrid classifiers:
     result_df = logistic_regression_classification(train_df, test_df, feature_col='merged_features')
-    # result_df = random_forest_classification(train_df, test_df, feature_col='merged_features')
+    # result_df = random_forest_classification(train_df, test_df, feature_col='hashedTfIdf')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='merged_features')
 
     # hybrid classifiers without sentence score:

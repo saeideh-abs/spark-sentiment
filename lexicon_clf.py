@@ -81,7 +81,7 @@ def get_balance_samples(df):
     neg_count = negative_df.count()
     neut_count = neutral_df.count()
 
-    min_count = min(pos_count, neg_count, neut_count)
+    min_count = min(pos_count, neg_count)
     print("positive comments:", pos_count, "negative comments:", neg_count,
           "neutral comments:", neut_count)
     print("min count = ", min_count)
@@ -142,11 +142,7 @@ def predict_polarities(df):
     result_df.collect()
     # result_df.select('accept', 'prediction').show(50, truncate=False)
     print("lexicon based polarity ditection was finished", display_current_time())
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("lexicon based method accuracy = " + str(accuracy), display_current_time())
+    evaluation(result_df, 'accept', 'prediction', "lexicon based")
     # tp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "truePositiveRateByLabel",
     #                              evaluator.metricLabel: 1.0})
     # fp_rate_1 = evaluator.evaluate(result_df, {evaluator.metricName: "falsePositiveRateByLabel",
@@ -178,15 +174,49 @@ def binary_confusion_matrix(df, target_col, prediction_col):
     print(tnu, fnup, fnun)
 
 
+def evaluation(df, target_col, prediction_col, classifier_name):
+    evaluator = MulticlassClassificationEvaluator(labelCol=target_col, predictionCol=prediction_col,
+                                                  metricName="accuracy", metricLabel=1.0)
+    accuracy = evaluator.evaluate(df)
+    print(classifier_name + " Test set accuracy = " + str(accuracy), display_current_time())
+    evaluator.setMetricName('f1')
+    f1 = evaluator.evaluate(df)
+    print("f1:", f1, display_current_time())
+
+    evaluator.setMetricName('weightedFMeasure')
+    Wfmeasure = evaluator.evaluate(df)
+    print("weighted f measure:", Wfmeasure, display_current_time())
+
+    evaluator.setMetricName('weightedPrecision')
+    Wprecision = evaluator.evaluate(df)
+    print("weightedPrecision:", Wprecision, display_current_time())
+
+    evaluator.setMetricName('weightedRecall')
+    Wrecall = evaluator.evaluate(df)
+    print("weightedRecall:", Wrecall, display_current_time())
+
+    evaluator.setMetricName('precisionByLabel')
+    precision2 = evaluator.evaluate(df)
+    print("PrecisionByLabel:", precision2, display_current_time())
+
+    evaluator.setMetricName('recallByLabel')
+    recall2 = evaluator.evaluate(df)
+    print("recallByLabel:", recall2, display_current_time())
+
+    evaluator.setMetricName('fMeasureByLabel')
+    fmeasure2 = evaluator.evaluate(df)
+    print("fMeasureByLabel:", fmeasure2, display_current_time())
+
+
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, lexicon based")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, lexicon based")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("local[*]") \
+    spark = SparkSession(spark_context).builder.master("spark://master:7077") \
         .appName("digikala comments sentiment, lexicon based") \
         .getOrCreate()
     print("****************************************")
@@ -198,11 +228,11 @@ if __name__ == '__main__':
     print("data was loaded from hdfs", display_current_time())
 
     data_df = digikala_crawled_cleaning(data_df)
-
+    data_df = data_df.repartition(spark_context.defaultParallelism)
     get_info(data_df)
 
     # ____________________ preprocessing _____________________
-    train, data_df = data_df.randomSplit([0.7, 0.3], seed=42)
+    train, data_df = data_df.randomSplit([0.7, 0.3], seed=100)
 
     data_df = data_df.select('text', 'accept', 'advantages', 'disadvantages')
     print("text cleaner func", display_current_time())
