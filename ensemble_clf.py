@@ -5,11 +5,12 @@ import ast
 from hazm import *
 from pyspark.context import SparkConf, SparkContext
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import concat_ws, udf, regexp_replace, when
+from pyspark.sql.functions import concat_ws, udf, regexp_replace, when, array, concat
 from functools import reduce
 from pyspark.sql import DataFrame
-from pyspark.sql.types import ArrayType, StringType, DoubleType
+from pyspark.sql.types import ArrayType, StringType, DoubleType, IntegerType
 from pyspark.ml.feature import Word2Vec, HashingTF, IDF
+from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.ml.classification import RandomForestClassifier, LogisticRegression, NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
@@ -82,7 +83,7 @@ def get_balance_samples(df):
     neg_count = negative_df.count()
     neut_count = neutral_df.count()
 
-    min_count = min(pos_count, neg_count, neut_count)
+    min_count = min(pos_count, neg_count)
     print("positive comments:", pos_count, "negative comments:", neg_count,
           "neutral comments:", neut_count)
     print("min count = ", min_count)
@@ -99,7 +100,7 @@ def get_balance_samples(df):
 
 def get_info(df):
     print("*********** get_info func *************")
-    df.printSchema()
+    # df.printSchema()
     # df.show()
     labels = df.select('accept')
     comments = df.select('text')
@@ -138,7 +139,7 @@ def text_cleaner(df):
 
 def tokenization(docs):
     tokens = docs.withColumn('tokens', hazm_tokenizer('clean_text'))
-    tokens.printSchema()
+    # tokens.printSchema()
     return tokens
 
 
@@ -153,7 +154,7 @@ def build_word2vec(train_df, test_df):
 
 def build_tfidf(train_df, test_df):
     print("entered in build_tfidf fun", display_current_time())
-    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=300)
+    hashingTF = HashingTF(inputCol="tokens", outputCol="hashedTf", numFeatures=15000)
     train_featurizedData = hashingTF.transform(train_df)
     test_featurizedData = hashingTF.transform(test_df)
 
@@ -180,24 +181,32 @@ def lexicon_based(df):
     return result_df
 
 
+def lexicon_features(df):
+    print("entered in lexicon based method", display_current_time())
+
+    text_polarity_udf = udf(polde.extract_features, ArrayType(IntegerType()))
+    result_df = df.withColumn('lexicon_features', text_polarity_udf('clean_text', 'advantages', 'disadvantages'))
+    print("lexicon based feature extraction was finished", display_current_time())
+    return result_df
+
+
 def logistic_regression_classification(train_df, test_df, feature_col):
     print("entered in logistic regression clf", display_current_time())
     lgr = LogisticRegression(labelCol='accept', featuresCol=feature_col, predictionCol='lgr_prediction',
                              # maxIter=10, regParam=0.3, elasticNetParam=0.8
                              )
     model = lgr.fit(train_df)
-    result_df = model.transform(test_df)
-    result_df = result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction')\
+    train_result_df = model.transform(train_df)
+    test_result_df = model.transform(test_df)
+    test_result_df = test_result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction')\
+        .withColumnRenamed('probability', 'lgrProbability')
+    train_result_df = train_result_df.withColumnRenamed('rawPrediction', 'lgrRawPrediction') \
         .withColumnRenamed('probability', 'lgrProbability')
 
-    # result_df.printSchema()
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="lgr_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("LGR Test set accuracy = " + str(accuracy), display_current_time())
-    # binary_confusion_matrix(result_df, 'accept', 'lgr_prediction')
-    return result_df
+    # test_result_df.printSchema()
+    # binary_confusion_matrix(test_result_df, 'accept', 'lgr_prediction')
+    evaluation(test_result_df, 'accept', 'lgr_prediction', "LGR")
+    return train_result_df, test_result_df
 
 
 def naive_bayes_classification(train_df, test_df, feature_col):
@@ -205,36 +214,34 @@ def naive_bayes_classification(train_df, test_df, feature_col):
     nb = NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol="accept", featuresCol=feature_col,
                     predictionCol='nb_prediction')
     model = nb.fit(train_df)
-    result_df = model.transform(test_df)
-    # result_df.printSchema()
-    result_df = result_df.withColumnRenamed('rawPrediction', 'nbRawPrediction')\
+    train_result_df = model.transform(train_df)
+    test_result_df = model.transform(test_df)
+    # test_result_df.printSchema()
+    test_result_df = test_result_df.withColumnRenamed('rawPrediction', 'nbRawPrediction')\
         .withColumnRenamed('probability', 'nbProbability')
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="nb_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("NB Test set accuracy = " + str(accuracy), display_current_time())
-    # result_df.select('accept', 'nb_prediction', 'lexicon_prediction').show(50, truncate=False)
-    # binary_confusion_matrix(result_df, 'accept', 'nb_prediction')
-    return result_df
+    train_result_df = train_result_df.withColumnRenamed('rawPrediction', 'nbRawPrediction') \
+        .withColumnRenamed('probability', 'nbProbability')
+    # binary_confusion_matrix(test_result_df, 'accept', 'nb_prediction')
+    evaluation(test_result_df, 'accept', 'nb_prediction', "NB")
+    return train_result_df, test_result_df
 
 
 def random_forest_classification(train_df, test_df, feature_col):
     print("entered in rf clf", display_current_time())
     rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='rf_prediction')
     model = rf.fit(train_df)
-    result_df = model.transform(test_df)
-    result_df = result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
+
+    train_result_df = model.transform(train_df)
+    test_result_df = model.transform(test_df)
+    test_result_df = test_result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
+        .withColumnRenamed('probability', 'rfProbability')
+    train_result_df = train_result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction') \
         .withColumnRenamed('probability', 'rfProbability')
 
-    # result_df.printSchema()
-
-    evaluator = MulticlassClassificationEvaluator(labelCol="accept", predictionCol="rf_prediction",
-                                                  metricName="accuracy")
-    accuracy = evaluator.evaluate(result_df)
-    print("RF Test set accuracy = " + str(accuracy))
-    # binary_confusion_matrix(result_df, 'accept', 'rf_prediction')
-    return result_df
+    # test_result_df.printSchema()
+    # binary_confusion_matrix(test_result_df, 'accept', 'rf_prediction')
+    evaluation(test_result_df, 'accept', 'rf_prediction', "RF")
+    return train_result_df, test_result_df
 
 
 @udf(returnType=DoubleType())
@@ -264,6 +271,14 @@ def soft_voting(df):
     return result_df
 
 
+def merge_features(df):
+    print("entered in merge_features func ", display_current_time())
+    df = df.withColumn('ml_features', array('lgr_prediction', 'nb_prediction', 'rf_prediction'))
+    to_vector = udf(lambda a: Vectors.dense(a), VectorUDT())
+    df = df.withColumn('merged_features', to_vector(concat(df.ml_features, df.lexicon_features)))
+    return df
+
+
 def binary_confusion_matrix(df, target_col, prediction_col):
     print("binary confusion matrix", display_current_time())
     tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
@@ -282,15 +297,49 @@ def binary_confusion_matrix(df, target_col, prediction_col):
     print(tnu, fnup, fnun)
 
 
+def evaluation(df, target_col, prediction_col, classifier_name):
+    evaluator = MulticlassClassificationEvaluator(labelCol=target_col, predictionCol=prediction_col,
+                                                  metricName="accuracy", metricLabel=1.0)
+    accuracy = evaluator.evaluate(df)
+    print(classifier_name + " Test set accuracy = " + str(accuracy), display_current_time())
+    evaluator.setMetricName('f1')
+    f1 = evaluator.evaluate(df)
+    print("f1:", f1, display_current_time())
+
+    evaluator.setMetricName('weightedFMeasure')
+    Wfmeasure = evaluator.evaluate(df)
+    print("weighted f measure:", Wfmeasure, display_current_time())
+
+    evaluator.setMetricName('weightedPrecision')
+    Wprecision = evaluator.evaluate(df)
+    print("weightedPrecision:", Wprecision, display_current_time())
+
+    evaluator.setMetricName('weightedRecall')
+    Wrecall = evaluator.evaluate(df)
+    print("weightedRecall:", Wrecall, display_current_time())
+
+    evaluator.setMetricName('precisionByLabel')
+    precision2 = evaluator.evaluate(df)
+    print("PrecisionByLabel:", precision2, display_current_time())
+
+    evaluator.setMetricName('recallByLabel')
+    recall2 = evaluator.evaluate(df)
+    print("recallByLabel:", recall2, display_current_time())
+
+    evaluator.setMetricName('fMeasureByLabel')
+    fmeasure2 = evaluator.evaluate(df)
+    print("fMeasureByLabel:", fmeasure2, display_current_time())
+
+
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("local[*]").setAppName("digikala comments sentiment, lexicon based")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, lexicon based")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("local[*]") \
+    spark = SparkSession(spark_context).builder.master("spark://master:7077") \
         .appName("digikala comments sentiment, ensemble clf") \
         .getOrCreate()
     print("****************************************")
@@ -318,16 +367,41 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
+    # # 1: do soft voting between classifiers predicts
+    # tfidf_train, tfidf_test = build_tfidf(train, test)
+    # w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
+    #
+    # result_df = lexicon_based(w2v_test)
+    # # result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
+    # result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
+    # print("number of partitions: ", data_df.rdd.getNumPartitions())
+    # result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
+    # result_df = soft_voting(result_df)
+    # # result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
+    # #     .show(50, truncate=False)
+    # print("end time:", display_current_time())
+
+    # # 2: get classifiers predictions as features
     tfidf_train, tfidf_test = build_tfidf(train, test)
     w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
 
-    result_df = lexicon_based(w2v_test)
-    # result_df = logistic_regression_classification(w2v_train, result_df, feature_col='word2vec')
-    result_df = naive_bayes_classification(tfidf_train, result_df, feature_col='hashedTfIdf')
+    train_result_df = lexicon_features(w2v_train)
+    test_result_df = lexicon_features(w2v_test)
+
+    train_result_df, test_result_df = logistic_regression_classification(train_result_df, test_result_df, feature_col='word2vec')
+    train_result_df, test_result_df = naive_bayes_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
     print("number of partitions: ", data_df.rdd.getNumPartitions())
-    result_df = random_forest_classification(w2v_train, result_df, feature_col='word2vec')
-    result_df = soft_voting(result_df)
-    # result_df.select('accept', 'ensemble_prediction', 'lexicon_prediction', 'lgr_prediction', 'rf_prediction')\
+    train_result_df, test_result_df = random_forest_classification(train_result_df, test_result_df, feature_col='word2vec')
+
+    train_result_df = merge_features(train_result_df)
+    test_result_df = merge_features(test_result_df)
+    # test_result_df.select('accept', 'lgr_prediction', 'rf_prediction', 'nb_prediction', 'merged_features')\
     #     .show(50, truncate=False)
+
+    # ensemble features
+    train_result_df = train_result_df.select('merged_features', 'accept')
+    test_result_df = test_result_df.select('merged_features', 'accept')
+    result_df = logistic_regression_classification(train_result_df, test_result_df, feature_col='merged_features')
     print("end time:", display_current_time())
+
     spark.stop()
