@@ -81,7 +81,7 @@ def get_balance_samples(df):
     neg_count = negative_df.count()
     neut_count = neutral_df.count()
 
-    min_count = min(pos_count, neg_count)
+    min_count = min(pos_count, neg_count, neut_count)
     print("positive comments:", pos_count, "negative comments:", neg_count,
           "neutral comments:", neut_count)
     print("min count = ", min_count)
@@ -92,13 +92,13 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_neg, balance_pos])
+    balance_df = reduce(DataFrame.unionAll, [balance_neg, balance_pos, balance_neut])
     return balance_df
 
 
 def get_info(df):
     print("*********** get_info func *************")
-    df.printSchema()
+    # df.printSchema()
     # df.show()
     labels = df.select('accept')
     comments = df.select('text')
@@ -240,7 +240,7 @@ if __name__ == '__main__':
 
     # ____________________ classification using lexicons _____________________
     new_df = predict_polarities(data_df)
-    binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
+    # binary_confusion_matrix(new_df, target_col='accept', prediction_col='prediction')
 
     print("end time:", display_current_time())
     spark.stop()

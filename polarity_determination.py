@@ -26,11 +26,11 @@ def load_lexicons():
     sentifars_lexicon_pos = open(root + 'resources/SentiFars_lexicon/positive.txt').read().split('\n')
     sentifars_lexicon_neg = open(root + 'resources/SentiFars_lexicon/negative.txt').read().split('\n')
 
-    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos\
-                + infogain_digikala_pos + sentifars_lexicon_pos\
+    pos_words = dataheart_lexicon_pos + textmining_lexicon_pos + sentifars_lexicon_pos\
+                + infogain_digikala_pos\
                 # + infogain_snapfood_pos
-    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg\
-                + infogain_digikala_neg + sentifars_lexicon_neg\
+    neg_words = dataheart_lexicon_neg + textmining_lexicon_neg + sentifars_lexicon_neg\
+                + infogain_digikala_neg \
                 # + infogain_snapfood_neg
     return pos_words, neg_words
 
