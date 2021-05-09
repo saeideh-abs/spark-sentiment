@@ -34,7 +34,7 @@ def list2string_udf(list):
 
 def digikala_crawled_cleaning(df):
     print("total number of data:", df.count(), display_current_time())
-    df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
+    # df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
     print("number of data after removing duplicates:", df.count(), display_current_time())
 
     # df = df.withColumnRenamed('comment_body', 'text')
@@ -58,7 +58,7 @@ def digikala_crawled_cleaning(df):
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
     print("count of labled and non-empty comment_bodies:", df.count())
 
-    df = get_balance_samples(df)
+    # df = get_balance_samples(df)
 
     # stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     # model = stringIndexer.fit(df)
@@ -279,6 +279,13 @@ def merge_features(df):
     return df
 
 
+def list2vector(df):
+    print("entered in list2vector func ", display_current_time())
+    to_vector = udf(lambda a: Vectors.dense(a), VectorUDT())
+    df = df.withColumn('merged_features', to_vector(df.lexicon_features))
+    return df
+
+
 def binary_confusion_matrix(df, target_col, prediction_col):
     print("binary confusion matrix", display_current_time())
     tp = df[(df[target_col] == 1) & (df[prediction_col] == 1)].count()
@@ -302,40 +309,40 @@ def evaluation(df, target_col, prediction_col, classifier_name):
                                                   metricName="accuracy", metricLabel=1.0)
     accuracy = evaluator.evaluate(df)
     print(classifier_name + " Test set accuracy = " + str(accuracy), display_current_time())
-    evaluator.setMetricName('f1')
-    f1 = evaluator.evaluate(df)
-    print("f1:", f1, display_current_time())
-
-    evaluator.setMetricName('weightedFMeasure')
-    Wfmeasure = evaluator.evaluate(df)
-    print("weighted f measure:", Wfmeasure, display_current_time())
-
-    evaluator.setMetricName('weightedPrecision')
-    Wprecision = evaluator.evaluate(df)
-    print("weightedPrecision:", Wprecision, display_current_time())
-
-    evaluator.setMetricName('weightedRecall')
-    Wrecall = evaluator.evaluate(df)
-    print("weightedRecall:", Wrecall, display_current_time())
-
-    evaluator.setMetricName('precisionByLabel')
-    precision2 = evaluator.evaluate(df)
-    print("PrecisionByLabel:", precision2, display_current_time())
-
-    evaluator.setMetricName('recallByLabel')
-    recall2 = evaluator.evaluate(df)
-    print("recallByLabel:", recall2, display_current_time())
-
-    evaluator.setMetricName('fMeasureByLabel')
-    fmeasure2 = evaluator.evaluate(df)
-    print("fMeasureByLabel:", fmeasure2, display_current_time())
+    # evaluator.setMetricName('f1')
+    # f1 = evaluator.evaluate(df)
+    # print("f1:", f1, display_current_time())
+    #
+    # evaluator.setMetricName('weightedFMeasure')
+    # Wfmeasure = evaluator.evaluate(df)
+    # print("weighted f measure:", Wfmeasure, display_current_time())
+    #
+    # evaluator.setMetricName('weightedPrecision')
+    # Wprecision = evaluator.evaluate(df)
+    # print("weightedPrecision:", Wprecision, display_current_time())
+    #
+    # evaluator.setMetricName('weightedRecall')
+    # Wrecall = evaluator.evaluate(df)
+    # print("weightedRecall:", Wrecall, display_current_time())
+    #
+    # evaluator.setMetricName('precisionByLabel')
+    # precision2 = evaluator.evaluate(df)
+    # print("PrecisionByLabel:", precision2, display_current_time())
+    #
+    # evaluator.setMetricName('recallByLabel')
+    # recall2 = evaluator.evaluate(df)
+    # print("recallByLabel:", recall2, display_current_time())
+    #
+    # evaluator.setMetricName('fMeasureByLabel')
+    # fmeasure2 = evaluator.evaluate(df)
+    # print("fMeasureByLabel:", fmeasure2, display_current_time())
 
 
 if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, lexicon based")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, ensemble")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
@@ -345,7 +352,7 @@ if __name__ == '__main__':
     print("****************************************")
 
     # _______________________ loading dataset _________________________
-    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
     # data_df = data_df.limit(100000)
@@ -362,7 +369,7 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=42
+                                      seed=100
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
@@ -383,18 +390,22 @@ if __name__ == '__main__':
 
     # # 2: get classifiers predictions as features
     tfidf_train, tfidf_test = build_tfidf(train, test)
-    w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
+    # w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
 
-    train_result_df = lexicon_features(w2v_train)
-    test_result_df = lexicon_features(w2v_test)
+    train_result_df = lexicon_features(tfidf_train)
+    test_result_df = lexicon_features(tfidf_test)
 
-    train_result_df, test_result_df = logistic_regression_classification(train_result_df, test_result_df, feature_col='word2vec')
+    train_result_df, test_result_df = logistic_regression_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
     train_result_df, test_result_df = naive_bayes_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
     print("number of partitions: ", data_df.rdd.getNumPartitions())
-    train_result_df, test_result_df = random_forest_classification(train_result_df, test_result_df, feature_col='word2vec')
+    train_result_df, test_result_df = random_forest_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
 
     train_result_df = merge_features(train_result_df)
     test_result_df = merge_features(test_result_df)
+    # # or
+    # train_result_df = list2vector(train_result_df)
+    # test_result_df = list2vector(test_result_df)
+
     # test_result_df.select('accept', 'lgr_prediction', 'rf_prediction', 'nb_prediction', 'merged_features')\
     #     .show(50, truncate=False)
 
