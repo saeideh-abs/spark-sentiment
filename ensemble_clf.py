@@ -342,11 +342,11 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, ensemble")
+    conf = SparkConf().setMaster("local[1]").setAppName("digikala comments sentiment, ensemble")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("spark://master:7077") \
+    spark = SparkSession(spark_context).builder.master("local[1]") \
         .appName("digikala comments sentiment, ensemble clf") \
         .getOrCreate()
     print("****************************************")
