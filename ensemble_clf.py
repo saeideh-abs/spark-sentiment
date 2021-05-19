@@ -34,7 +34,7 @@ def list2string_udf(list):
 
 def digikala_crawled_cleaning(df):
     print("total number of data:", df.count(), display_current_time())
-    # df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
+    df = df.dropDuplicates(['product_id', 'holder', 'comment_title', 'comment_body'])
     print("number of data after removing duplicates:", df.count(), display_current_time())
 
     # df = df.withColumnRenamed('comment_body', 'text')
@@ -58,7 +58,7 @@ def digikala_crawled_cleaning(df):
     df = df.rdd.filter(lambda arg: arg.text is not None).toDF()  # remove empty comments
     print("count of labled and non-empty comment_bodies:", df.count())
 
-    # df = get_balance_samples(df)
+    df = get_balance_samples(df)
 
     # stringIndexer = StringIndexer(inputCol="recommendation", outputCol="accept", stringOrderType="frequencyDesc")
     # model = stringIndexer.fit(df)
@@ -83,7 +83,7 @@ def get_balance_samples(df):
     neg_count = negative_df.count()
     neut_count = neutral_df.count()
 
-    min_count = min(pos_count, neg_count)
+    min_count = min(pos_count, neg_count, neut_count)
     print("positive comments:", pos_count, "negative comments:", neg_count,
           "neutral comments:", neut_count)
     print("min count = ", min_count)
@@ -94,7 +94,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
     return balance_df
 
 
@@ -313,18 +313,18 @@ def evaluation(df, target_col, prediction_col, classifier_name):
     # f1 = evaluator.evaluate(df)
     # print("f1:", f1, display_current_time())
     #
-    # evaluator.setMetricName('weightedFMeasure')
-    # Wfmeasure = evaluator.evaluate(df)
-    # print("weighted f measure:", Wfmeasure, display_current_time())
-    #
-    # evaluator.setMetricName('weightedPrecision')
-    # Wprecision = evaluator.evaluate(df)
-    # print("weightedPrecision:", Wprecision, display_current_time())
-    #
-    # evaluator.setMetricName('weightedRecall')
-    # Wrecall = evaluator.evaluate(df)
-    # print("weightedRecall:", Wrecall, display_current_time())
-    #
+    evaluator.setMetricName('weightedFMeasure')
+    Wfmeasure = evaluator.evaluate(df)
+    print("weighted f measure:", Wfmeasure, display_current_time())
+
+    evaluator.setMetricName('weightedPrecision')
+    Wprecision = evaluator.evaluate(df)
+    print("weightedPrecision:", Wprecision, display_current_time())
+
+    evaluator.setMetricName('weightedRecall')
+    Wrecall = evaluator.evaluate(df)
+    print("weightedRecall:", Wrecall, display_current_time())
+
     # evaluator.setMetricName('precisionByLabel')
     # precision2 = evaluator.evaluate(df)
     # print("PrecisionByLabel:", precision2, display_current_time())
@@ -342,11 +342,11 @@ if __name__ == '__main__':
     print("start time:", display_current_time())
 
     # _______________________ spark configs _________________________
-    conf = SparkConf().setMaster("local[1]").setAppName("digikala comments sentiment, ensemble")
+    conf = SparkConf().setMaster("spark://master:7077").setAppName("digikala comments sentiment, ensemble")
     spark_context = SparkContext(conf=conf)
     spark_context.addPyFile("./polarity_determination.py")
 
-    spark = SparkSession(spark_context).builder.master("local[1]") \
+    spark = SparkSession(spark_context).builder.master("spark://master:7077") \
         .appName("digikala comments sentiment, ensemble clf") \
         .getOrCreate()
     print("****************************************")
@@ -369,7 +369,7 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=100
+                                      seed=15
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
