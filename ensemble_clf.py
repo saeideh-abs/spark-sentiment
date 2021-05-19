@@ -273,7 +273,7 @@ def soft_voting(df):
 
 def merge_features(df):
     print("entered in merge_features func ", display_current_time())
-    df = df.withColumn('ml_features', array('lgr_prediction', 'nb_prediction', 'rf_prediction'))
+    df = df.withColumn('ml_features', array('lgr_prediction', 'nb_prediction'))
     to_vector = udf(lambda a: Vectors.dense(a), VectorUDT())
     df = df.withColumn('merged_features', to_vector(concat(df.ml_features, df.lexicon_features)))
     return df
@@ -352,10 +352,10 @@ if __name__ == '__main__':
     print("****************************************")
 
     # _______________________ loading dataset _________________________
-    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_all.csv', inferSchema=True, header=True)
+    data_df = spark.read.csv('hdfs://master:9000/user/saeideh/digikala_dataset.csv', inferSchema=True, header=True)
     print("data was loaded from hdfs", display_current_time())
 
-    # data_df = data_df.limit(100000)
+    # data_df = data_df.limit(960000)
     data_df = data_df.repartition(spark_context.defaultParallelism)
     data_df = digikala_crawled_cleaning(data_df)
     data_df = data_df.repartition(spark_context.defaultParallelism)
@@ -374,7 +374,7 @@ if __name__ == '__main__':
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    # # 1: do soft voting between classifiers predicts
+    # # method 1: do soft voting between classifiers predicts
     # tfidf_train, tfidf_test = build_tfidf(train, test)
     # w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
     #
@@ -388,7 +388,7 @@ if __name__ == '__main__':
     # #     .show(50, truncate=False)
     # print("end time:", display_current_time())
 
-    # # 2: get classifiers predictions as features
+    # # method 2: get classifiers predictions as features
     tfidf_train, tfidf_test = build_tfidf(train, test)
     # w2v_train, w2v_test = build_word2vec(tfidf_train, tfidf_test)
 
@@ -398,12 +398,12 @@ if __name__ == '__main__':
     train_result_df, test_result_df = logistic_regression_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
     train_result_df, test_result_df = naive_bayes_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
     print("number of partitions: ", data_df.rdd.getNumPartitions())
-    train_result_df, test_result_df = random_forest_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
+    # train_result_df, test_result_df = random_forest_classification(train_result_df, test_result_df, feature_col='hashedTfIdf')
 
     train_result_df = merge_features(train_result_df)
     test_result_df = merge_features(test_result_df)
     # # or
-    # train_result_df = list2vector(train_result_df)
+    # train_result_df = list2vector(train_result_df) # for just using lexicon features
     # test_result_df = list2vector(test_result_df)
 
     # test_result_df.select('accept', 'lgr_prediction', 'rf_prediction', 'nb_prediction', 'merged_features')\
@@ -412,6 +412,11 @@ if __name__ == '__main__':
     # ensemble features
     train_result_df = train_result_df.select('merged_features', 'accept')
     test_result_df = test_result_df.select('merged_features', 'accept')
+
+    train_result_df = train_result_df.repartition(spark_context.defaultParallelism)
+    test_result_df = test_result_df.repartition(spark_context.defaultParallelism)
+    print("number of partiotions", train_result_df.rdd.getNumPartitions(), test_result_df.rdd.getNumPartitions())
+
     result_df = logistic_regression_classification(train_result_df, test_result_df, feature_col='merged_features')
     print("end time:", display_current_time())
 
