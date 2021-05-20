@@ -300,9 +300,9 @@ def evaluation(df, target_col, prediction_col, classifier_name):
                                                   metricName="accuracy", metricLabel=1.0)
     accuracy = evaluator.evaluate(df)
     print(classifier_name + " Test set accuracy = " + str(accuracy), display_current_time())
-    evaluator.setMetricName('f1')
-    f1 = evaluator.evaluate(df)
-    print("f1:", f1, display_current_time())
+    # evaluator.setMetricName('f1')
+    # f1 = evaluator.evaluate(df)
+    # print("f1:", f1, display_current_time())
 
     evaluator.setMetricName('weightedFMeasure')
     Wfmeasure = evaluator.evaluate(df)
@@ -316,17 +316,17 @@ def evaluation(df, target_col, prediction_col, classifier_name):
     Wrecall = evaluator.evaluate(df)
     print("weightedRecall:", Wrecall, display_current_time())
 
-    evaluator.setMetricName('precisionByLabel')
-    precision2 = evaluator.evaluate(df)
-    print("PrecisionByLabel:", precision2, display_current_time())
-
-    evaluator.setMetricName('recallByLabel')
-    recall2 = evaluator.evaluate(df)
-    print("recallByLabel:", recall2, display_current_time())
-
-    evaluator.setMetricName('fMeasureByLabel')
-    fmeasure2 = evaluator.evaluate(df)
-    print("fMeasureByLabel:", fmeasure2, display_current_time())
+    # evaluator.setMetricName('precisionByLabel')
+    # precision2 = evaluator.evaluate(df)
+    # print("PrecisionByLabel:", precision2, display_current_time())
+    #
+    # evaluator.setMetricName('recallByLabel')
+    # recall2 = evaluator.evaluate(df)
+    # print("recallByLabel:", recall2, display_current_time())
+    #
+    # evaluator.setMetricName('fMeasureByLabel')
+    # fmeasure2 = evaluator.evaluate(df)
+    # print("fMeasureByLabel:", fmeasure2, display_current_time())
 
     # evaluator.setMetricLabel(0.0)
     # print("metric label set to 0.0")
@@ -374,32 +374,32 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=10
+                                      seed=80
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    tfidf_train, tfidf_test = build_tfidf(train, test)
-    # w2v_train, w2v_test = build_word2vec(train, test)
+    # tfidf_train, tfidf_test = build_tfidf(train, test)
+    w2v_train, w2v_test = build_word2vec(train, test)
 
-    lexicon_train_features = lexicon_based(tfidf_train)
-    lexicon_test_features = lexicon_based(tfidf_test)
-    # lexicon_train_features = lexicon_based(w2v_train)
-    # lexicon_test_features = lexicon_based(w2v_test)
+    # lexicon_train_features = lexicon_based(tfidf_train)
+    # lexicon_test_features = lexicon_based(tfidf_test)
+    lexicon_train_features = lexicon_based(w2v_train)
+    lexicon_test_features = lexicon_based(w2v_test)
 
-    train_df = append_to_sparse_vector(lexicon_train_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
-    test_df = append_to_sparse_vector(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
+    # train_df = append_to_sparse_vector(lexicon_train_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
+    # test_df = append_to_sparse_vector(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
     # train_df2 = append_to_sparse_vector2(lexicon_train_features, sparse_vec_col='hashedTfIdf',list_col='lexicon_features')
     # test_df2 = append_to_sparse_vector2(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
     # # or
-    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
     # train_df2 = append_to_dense_vector2(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
     # test_df2 = append_to_dense_vector2(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
     # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
-    result_df = random_forest_classification(train_df, test_df, feature_col='hashedTfIdf')
+    result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
     print("number of partitions: ", data_df.rdd.getNumPartitions())
