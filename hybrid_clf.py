@@ -266,7 +266,8 @@ def naive_bayes_classification(train_df, test_df, feature_col):
 
 def random_forest_classification(train_df, test_df, feature_col):
     print("entered in rf clf", display_current_time())
-    rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='rf_prediction')
+    rf = RandomForestClassifier(labelCol="accept", featuresCol=feature_col, predictionCol='rf_prediction'
+                                ,maxDepth=10, numTrees=50, featureSubsetStrategy='sqrt')
     model = rf.fit(train_df)
     result_df = model.transform(test_df)
     result_df = result_df.withColumnRenamed('rawPrediction', 'rfRawPrediction')\
@@ -374,7 +375,7 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=80
+                                      seed=55
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
