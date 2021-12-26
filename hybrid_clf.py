@@ -84,7 +84,7 @@ def get_balance_samples(df):
     neg_count = negative_df.count()
     neut_count = neutral_df.count()
 
-    min_count = min(pos_count, neg_count)
+    min_count = min(pos_count, neg_count, neut_count)
     print("positive comments:", pos_count, "negative comments:", neg_count,
           "neutral comments:", neut_count)
     print("min count = ", min_count)
@@ -95,7 +95,7 @@ def get_balance_samples(df):
 
     print("balance positive comments:", balance_pos.count(), "balance negative comments:", balance_neg.count(),
           "balance neutral comments:", balance_neut.count())
-    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg])
+    balance_df = reduce(DataFrame.unionAll, [balance_pos, balance_neg, balance_neut])
     return balance_df
 
 
@@ -375,32 +375,32 @@ if __name__ == '__main__':
     data_df = tokenization(data_df)
 
     train, test = data_df.randomSplit([0.7, 0.3],
-                                      seed=55
+                                      seed=17
                                       )
     print("train and test count", train.count(), test.count(), display_current_time())
 
     # ____________________ classification part _____________________
-    # tfidf_train, tfidf_test = build_tfidf(train, test)
-    w2v_train, w2v_test = build_word2vec(train, test)
+    tfidf_train, tfidf_test = build_tfidf(train, test)
+    # w2v_train, w2v_test = build_word2vec(train, test)
 
-    # lexicon_train_features = lexicon_based(tfidf_train)
-    # lexicon_test_features = lexicon_based(tfidf_test)
-    lexicon_train_features = lexicon_based(w2v_train)
-    lexicon_test_features = lexicon_based(w2v_test)
+    lexicon_train_features = lexicon_based(tfidf_train)
+    lexicon_test_features = lexicon_based(tfidf_test)
+    # lexicon_train_features = lexicon_based(w2v_train)
+    # lexicon_test_features = lexicon_based(w2v_test)
 
-    # train_df = append_to_sparse_vector(lexicon_train_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
-    # test_df = append_to_sparse_vector(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
+    train_df = append_to_sparse_vector(lexicon_train_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
+    test_df = append_to_sparse_vector(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
     # train_df2 = append_to_sparse_vector2(lexicon_train_features, sparse_vec_col='hashedTfIdf',list_col='lexicon_features')
     # test_df2 = append_to_sparse_vector2(lexicon_test_features, sparse_vec_col='hashedTfIdf', list_col='lexicon_features')
     # # or
-    train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
-    test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # train_df = append_to_dense_vector(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
+    # test_df = append_to_dense_vector(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
     # train_df2 = append_to_dense_vector2(lexicon_train_features, dense_vec_col='word2vec', list_col='lexicon_features')
     # test_df2 = append_to_dense_vector2(lexicon_test_features, dense_vec_col='word2vec', list_col='lexicon_features')
 
     # alone classifiers:
     # result_df = logistic_regression_classification(train_df, test_df, feature_col='word2vec')
-    result_df = random_forest_classification(train_df, test_df, feature_col='word2vec')
+    result_df = random_forest_classification(train_df, test_df, feature_col='hashedTfIdf')
     # result_df = naive_bayes_classification(train_df, test_df, feature_col='hashedTfIdf')
 
     print("number of partitions: ", data_df.rdd.getNumPartitions())
